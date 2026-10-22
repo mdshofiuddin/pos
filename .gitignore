@@ -39,3 +39,5 @@ Thumbs.db
 # Build outputs
 apps/api/dist
 apps/web/dist
+*.zip
+

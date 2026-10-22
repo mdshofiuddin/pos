@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  pos-enterprise:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pos-enterprise-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - JWT_SECRET=production-super-secure-jwt-secret-key-pos-enterprise-2026
+      - SHOP_NAME=Apex Mart Superstore
+      - SHOP_ADDRESS=Plot 42, Block C, Gulshan-1, Dhaka-1212
+      - SHOP_PHONE=+880 1712-998877
+      - SHOP_CURRENCY=BDT
+      - SHOP_VAT_RATE=5.0
+    volumes:
+      - pos_data:/app/apps/api
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  pos_data:
+    driver: local

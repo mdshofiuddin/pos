@@ -9,7 +9,7 @@ import { logAudit } from '../../middleware/auditHelper.js';
 export const catalogRouter = Router();
 
 // GET /api/v1/products - List / Search products
-catalogRouter.get('/products', requireAuth, async (req, res, next) => {
+catalogRouter.get('/products', requireAuth, requirePermission('catalog:read'), async (req, res, next) => {
   try {
     const db = getDb();
     const search = ((req.query.search as string) || '').trim();
@@ -67,7 +67,7 @@ catalogRouter.get('/products', requireAuth, async (req, res, next) => {
 });
 
 // GET /api/v1/products/:id - Single product
-catalogRouter.get('/products/:id', requireAuth, async (req, res, next) => {
+catalogRouter.get('/products/:id', requireAuth, requirePermission('catalog:read'), async (req, res, next) => {
   try {
     const db = getDb();
     const products = await db.query<any>(
@@ -271,7 +271,7 @@ catalogRouter.put('/products/:id', requireAuth, requirePermission('catalog:write
 });
 
 // GET /api/v1/categories - List categories
-catalogRouter.get('/categories', requireAuth, async (req, res, next) => {
+catalogRouter.get('/categories', requireAuth, requirePermission('catalog:read'), async (req, res, next) => {
   try {
     const db = getDb();
     const categories = await db.query<any>(
@@ -317,7 +317,7 @@ catalogRouter.post('/categories', requireAuth, requirePermission('catalog:write'
 });
 
 // GET /api/v1/units - List units
-catalogRouter.get('/units', requireAuth, async (req, res, next) => {
+catalogRouter.get('/units', requireAuth, requirePermission('catalog:read'), async (req, res, next) => {
   try {
     const db = getDb();
     const units = await db.query<any>('SELECT * FROM units ORDER BY name ASC');

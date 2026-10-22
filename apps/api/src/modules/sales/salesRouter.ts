@@ -4,11 +4,15 @@ import { getDb } from '../../db/index.js';
 import { requireAuth, requirePermission } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { logAudit } from '../../middleware/auditHelper.js';
+import { posRouter } from '../pos/posRouter.js';
 
 export const salesRouter = Router();
 
+// Mount POS checkout router (POST /checkout) directly under /sales
+salesRouter.use(posRouter);
+
 // GET /api/v1/sales - List invoices
-salesRouter.get('/', requireAuth, async (req, res, next) => {
+salesRouter.get('/', requireAuth, requirePermission('pos:checkout'), async (req, res, next) => {
   try {
     const db = getDb();
     const branchId = req.user!.branchId;
@@ -70,7 +74,7 @@ salesRouter.get('/', requireAuth, async (req, res, next) => {
 });
 
 // GET /api/v1/sales/:id - Invoice detail for view/reprint
-salesRouter.get('/:id', requireAuth, async (req, res, next) => {
+salesRouter.get('/:id', requireAuth, requirePermission('pos:checkout'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const db = getDb();

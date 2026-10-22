@@ -9,7 +9,7 @@ import { logAudit } from '../../middleware/auditHelper.js';
 export const inventoryRouter = Router();
 
 // GET /api/v1/inventory/overview - At-a-glance inventory KPI summary
-inventoryRouter.get('/overview', requireAuth, async (req, res, next) => {
+inventoryRouter.get('/overview', requireAuth, requirePermission('inventory:read'), async (req, res, next) => {
   try {
     const db = getDb();
     const branchId = req.user!.branchId;
@@ -55,7 +55,7 @@ inventoryRouter.get('/overview', requireAuth, async (req, res, next) => {
 });
 
 // GET /api/v1/inventory/balances - Detailed item stock balances
-inventoryRouter.get('/balances', requireAuth, async (req, res, next) => {
+inventoryRouter.get('/balances', requireAuth, requirePermission('inventory:read'), async (req, res, next) => {
   try {
     const db = getDb();
     const branchId = req.user!.branchId;
@@ -111,7 +111,7 @@ inventoryRouter.get('/balances', requireAuth, async (req, res, next) => {
 });
 
 // GET /api/v1/inventory/movements - Append-only stock movement ledger
-inventoryRouter.get('/movements', requireAuth, async (req, res, next) => {
+inventoryRouter.get('/movements', requireAuth, requirePermission('inventory:read'), async (req, res, next) => {
   try {
     const db = getDb();
     const branchId = req.user!.branchId;

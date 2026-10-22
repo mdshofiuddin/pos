@@ -183,12 +183,14 @@ export function App() {
             </button>
           )}
 
-          <button
-            className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('settings')}
-          >
-            <Settings size={18} /> Store Settings
-          </button>
+          {(currentUser.roleName === 'admin' || currentUser.permissions?.includes('settings:manage')) && (
+            <button
+              className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+              onClick={() => setActiveTab('settings')}
+            >
+              <Settings size={18} /> Store Settings
+            </button>
+          )}
         </nav>
 
         {/* Sidebar Footer with user info & logout */}

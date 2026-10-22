@@ -9,7 +9,7 @@ import { logAudit } from '../../middleware/auditHelper.js';
 export const sessionRouter = Router();
 
 // GET /api/v1/cash-sessions/current - Get active cashier session
-sessionRouter.get('/current', requireAuth, async (req, res, next) => {
+sessionRouter.get('/current', requireAuth, requirePermission('pos:session'), async (req, res, next) => {
   try {
     const db = getDb();
     const branchId = req.user!.branchId;
@@ -119,6 +119,11 @@ sessionRouter.post('/movements', requireAuth, requirePermission('pos:session'), 
         throw new AppError('Active session not found or already closed', 404, 'SESSION_NOT_FOUND');
       }
 
+      const activeSession = sessionRows[0];
+      if (activeSession.user_id !== userId && req.user!.roleName !== 'admin' && req.user!.roleName !== 'manager') {
+        throw new AppError('Unauthorized: You can only record movements in your own active cash session', 403, 'FORBIDDEN');
+      }
+
       const movementId = `cm-${Date.now()}`;
       await tx.execute(
         `INSERT INTO cash_movements (id, session_id, branch_id, user_id, movement_type, amount, reason)
@@ -202,6 +207,9 @@ sessionRouter.post('/:id/close', requireAuth, requirePermission('pos:session'), 
     }
 
     const session = sessionRows[0];
+    if (session.user_id !== req.user!.id && req.user!.roleName !== 'admin' && req.user!.roleName !== 'manager') {
+      throw new AppError('Unauthorized: You can only close your own active cash session', 403, 'FORBIDDEN');
+    }
     const expectedCash = session.expected_cash;
     // Variance = Counted - Expected (negative means shortage, positive means surplus)
     const variance = countedCash - expectedCash;
@@ -243,7 +251,7 @@ sessionRouter.post('/:id/close', requireAuth, requirePermission('pos:session'), 
 });
 
 // GET /api/v1/cash-sessions - History list
-sessionRouter.get('/', requireAuth, async (req, res, next) => {
+sessionRouter.get('/', requireAuth, requirePermission('pos:session'), async (req, res, next) => {
   try {
     const db = getDb();
     const branchId = req.user!.branchId;

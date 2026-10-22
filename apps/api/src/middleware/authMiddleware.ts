@@ -25,8 +25,26 @@ declare global {
   }
 }
 
+let ephemeralDevSecret: string | null = null;
+
+function getJwtSecret(): string {
+  if (config.jwtSecret && config.jwtSecret.trim().length > 0) {
+    return config.jwtSecret;
+  }
+  if (process.env.JWT_SECRET && process.env.JWT_SECRET.trim().length > 0) {
+    return process.env.JWT_SECRET;
+  }
+  if (config.env === 'production') {
+    throw new AppError('Server misconfiguration: JWT_SECRET environment variable is missing.', 500, 'AUTH_CONFIG_ERROR');
+  }
+  if (!ephemeralDevSecret) {
+    ephemeralDevSecret = crypto.randomBytes(32).toString('hex');
+  }
+  return ephemeralDevSecret;
+}
+
 export function generateToken(payload: object): string {
-  return jwt.sign(payload, config.jwtSecret, { expiresIn: '12h' });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: '12h' });
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -50,7 +68,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     // Verify token
     let decoded: any;
     try {
-      decoded = jwt.verify(token, config.jwtSecret);
+      decoded = jwt.verify(token, getJwtSecret());
     } catch (err: any) {
       throw new AppError('Invalid or expired authentication token.', 401, 'INVALID_TOKEN');
     }

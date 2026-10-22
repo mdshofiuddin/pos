@@ -9,7 +9,7 @@ import { logAudit } from '../../middleware/auditHelper.js';
 export const customersRouter = Router();
 
 // GET /api/v1/customers - List customers
-customersRouter.get('/', requireAuth, async (req, res, next) => {
+customersRouter.get('/', requireAuth, requirePermission('customers:read'), async (req, res, next) => {
   try {
     const db = getDb();
     const branchId = req.user!.branchId;

@@ -49,10 +49,10 @@ npm install
 ### Step 2.3: Configure Production Environment Variables
 Create or edit your production `.env` file in `apps/api/.env`:
 ```bash
-cat << 'EOF' > apps/api/.env
+cat << EOF > apps/api/.env
 NODE_ENV=production
 PORT=5000
-JWT_SECRET=production-super-secret-key-change-me-to-a-64-character-random-hex
+JWT_SECRET=$(openssl rand -hex 32)
 SHOP_NAME=Apex Mart Superstore
 SHOP_ADDRESS=Plot 42, Block C, Gulshan-1, Dhaka-1212
 SHOP_PHONE=+880 1712-998877
@@ -70,7 +70,18 @@ EOF
 npm run build
 ```
 
-### Step 2.5: Run as a System Daemon using PM2
+### Step 2.5: Database Migration & Seed Timing
+- **Automatic Execution on Boot:** When the server starts (`node apps/api/dist/server.js` or `npm start`), the bootstrap process automatically checks for database existence, executes the schema migration (`database/schema.sql` / `apps/api/src/db/migrations/schema.sql`), and loads baseline roles, permissions, and sample catalog items (`database/seed.sql`) if not already populated.
+- **Manual Migration / Re-seeding (Optional):**
+```bash
+# Run schema migration directly
+npm run db:migrate
+
+# Seed baseline users, roles, permissions, and demo catalog
+npm run seed
+```
+
+### Step 2.6: Run as a System Daemon using PM2
 ```bash
 # Install PM2 globally
 sudo npm install -g pm2

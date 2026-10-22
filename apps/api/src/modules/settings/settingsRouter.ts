@@ -7,7 +7,7 @@ import { logAudit } from '../../middleware/auditHelper.js';
 export const settingsRouter = Router();
 
 // GET /api/v1/settings - Get all store settings
-settingsRouter.get('/', requireAuth, async (req, res, next) => {
+settingsRouter.get('/', requireAuth, requirePermission('settings:manage'), async (req, res, next) => {
   try {
     const db = getDb();
     const rows = await db.query<any>('SELECT * FROM settings');

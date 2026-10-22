@@ -225,7 +225,7 @@ returnsRouter.post('/', requireAuth, requirePermission('pos:return'), async (req
 });
 
 // GET /api/v1/returns - List returns
-returnsRouter.get('/', requireAuth, async (req, res, next) => {
+returnsRouter.get('/', requireAuth, requirePermission('pos:return'), async (req, res, next) => {
   try {
     const db = getDb();
     const branchId = req.user!.branchId;

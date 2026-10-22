@@ -4,13 +4,16 @@
   "description": "Production-Grade POS Software (Express.js + React TypeScript)",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
-    "postinstall": "npm --prefix apps/api install && npm --prefix apps/web install",
     "build": "npm --prefix apps/web run build && npm --prefix apps/api run build",
     "start": "node apps/api/dist/server.js",
     "dev": "npm run dev:api",
     "dev:api": "npm --prefix apps/api run dev",
     "dev:web": "npm --prefix apps/web run dev",
-    "seed": "npm --prefix apps/api run seed"
+    "seed": "npm --prefix apps/api run seed",
+    "db:migrate": "npm --prefix apps/api run db:migrate"
   }
 }

@@ -9,7 +9,7 @@ import { logAudit } from '../../middleware/auditHelper.js';
 export const purchasingRouter = Router();
 
 // GET /api/v1/suppliers - List suppliers
-purchasingRouter.get('/suppliers', requireAuth, async (req, res, next) => {
+purchasingRouter.get('/suppliers', requireAuth, requirePermission('purchases:read'), async (req, res, next) => {
   try {
     const db = getDb();
     const suppliers = await db.query<any>(
@@ -70,7 +70,7 @@ purchasingRouter.post('/suppliers', requireAuth, requirePermission('purchases:wr
 });
 
 // GET /api/v1/purchases - List purchases
-purchasingRouter.get('/purchases', requireAuth, async (req, res, next) => {
+purchasingRouter.get('/purchases', requireAuth, requirePermission('purchases:read'), async (req, res, next) => {
   try {
     const db = getDb();
     const branchId = req.user!.branchId;

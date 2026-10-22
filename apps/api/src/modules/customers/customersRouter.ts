@@ -104,8 +104,8 @@ customersRouter.post('/:id/pay-due', requireAuth, requirePermission('customers:w
     const branchId = req.user!.branchId;
 
     await db.transaction(async (tx) => {
-      const custRows = await tx.query<any>('SELECT * FROM customers WHERE id = ?', [id]);
-      if (custRows.length === 0) throw new AppError('Customer not found', 404, 'NOT_FOUND');
+      const custRows = await tx.query<any>('SELECT * FROM customers WHERE id = ? AND branch_id = ?', [id, branchId]);
+      if (custRows.length === 0) throw new AppError('Customer not found in this branch or access denied', 404, 'NOT_FOUND');
 
       const cust = custRows[0];
       if (cust.current_due <= 0) {
@@ -115,13 +115,13 @@ customersRouter.post('/:id/pay-due', requireAuth, requirePermission('customers:w
       const payAmount = Math.min(amount, cust.current_due);
       const remainingDue = Math.round((cust.current_due - payAmount) * 100) / 100;
 
-      // Update customer due balance
+      // Update customer due balance scoped to branch
       await tx.execute(
         `UPDATE customers
          SET current_due = ?,
              updated_at = datetime('now')
-         WHERE id = ?`,
-        [remainingDue, id]
+         WHERE id = ? AND branch_id = ?`,
+        [remainingDue, id, branchId]
       );
 
       // If paid via cash, update active cash session

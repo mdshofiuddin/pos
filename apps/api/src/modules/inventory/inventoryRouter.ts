@@ -190,12 +190,12 @@ inventoryRouter.post('/adjustments', requireAuth, requirePermission('inventory:a
         `SELECT p.id, p.name, p.cost_price as costPrice, COALESCE(sb.current_stock, 0) as currentStock
          FROM products p
          LEFT JOIN stock_balances sb ON p.id = sb.product_id AND sb.branch_id = ?
-         WHERE p.id = ?`,
-        [branchId, productId]
+         WHERE p.id = ? AND p.branch_id = ?`,
+        [branchId, productId, branchId]
       );
 
       if (prodRows.length === 0) {
-        throw new AppError('Product not found', 404, 'NOT_FOUND');
+        throw new AppError('Product not found in this branch or access denied', 404, 'NOT_FOUND');
       }
 
       const prod = prodRows[0];

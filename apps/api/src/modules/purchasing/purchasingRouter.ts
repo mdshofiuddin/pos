@@ -136,6 +136,20 @@ purchasingRouter.post('/purchases', requireAuth, requirePermission('purchases:wr
     const paymentStatus = dueAmount === 0 ? 'paid' : paidAmount > 0 ? 'partial' : 'due';
 
     await db.transaction(async (tx) => {
+      // 0. Verify supplier exists
+      const supRows = await tx.query<any>('SELECT id FROM suppliers WHERE id = ?', [supplierId]);
+      if (supRows.length === 0) {
+        throw new AppError('Supplier not found', 404, 'NOT_FOUND');
+      }
+
+      // 0b. Verify all products belong to this branch
+      for (const item of items) {
+        const prodRows = await tx.query<any>('SELECT id FROM products WHERE id = ? AND branch_id = ?', [item.productId, branchId]);
+        if (prodRows.length === 0) {
+          throw new AppError(`Product [${item.productId}] not found in this branch`, 404, 'NOT_FOUND');
+        }
+      }
+
       // 1. Create Purchase Header
       await tx.execute(
         `INSERT INTO purchases (id, branch_id, supplier_id, invoice_number, purchase_date, subtotal, tax_amount, grand_total, paid_amount, due_amount, payment_status, notes, created_by)

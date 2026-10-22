@@ -77,6 +77,17 @@ posRouter.post('/checkout', requireAuth, requirePermission('pos:checkout'), asyn
 
     // 3. Begin Atomic Database Transaction
     const result = await db.transaction(async (tx) => {
+      // 3b. Verify customer ownership if customer attached
+      if (customerId) {
+        const custRows = await tx.query<any>(
+          'SELECT id, name FROM customers WHERE id = ? AND branch_id = ?',
+          [customerId, branchId]
+        );
+        if (custRows.length === 0) {
+          throw new AppError('Customer not found in this branch or access denied', 404, 'CUSTOMER_NOT_FOUND');
+        }
+      }
+
       // 4. Load Trusted Product Data from Server (Never trust client prices or stock)
       let subtotal = 0;
       let totalTax = 0;

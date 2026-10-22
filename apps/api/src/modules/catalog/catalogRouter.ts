@@ -200,22 +200,23 @@ catalogRouter.put('/products/:id', requireAuth, requirePermission('catalog:write
     const { id } = req.params;
     const db = getDb();
 
-    const existing = await db.query<any>('SELECT * FROM products WHERE id = ?', [id]);
+    const branchId = req.user!.branchId;
+    const existing = await db.query<any>('SELECT * FROM products WHERE id = ? AND branch_id = ?', [id, branchId]);
     if (existing.length === 0) {
-      throw new AppError('Product not found', 404, 'NOT_FOUND');
+      throw new AppError('Product not found in this branch or access denied', 404, 'NOT_FOUND');
     }
 
     const { name, categoryId, unitId, sku, barcode, costPrice, sellingPrice, minStockThreshold, maxStockThreshold, taxRate, isActive, description } = req.body;
 
     // Check duplicate barcode or SKU if changed
     if (sku && sku !== existing[0].sku) {
-      const dupSku = await db.query<any>('SELECT id FROM products WHERE sku = ? AND id != ?', [sku, id]);
-      if (dupSku.length > 0) throw new AppError('SKU already exists', 409, 'DUPLICATE_SKU');
+      const dupSku = await db.query<any>('SELECT id FROM products WHERE sku = ? AND branch_id = ? AND id != ?', [sku, branchId, id]);
+      if (dupSku.length > 0) throw new AppError('SKU already exists in this branch', 409, 'DUPLICATE_SKU');
     }
 
     if (barcode && barcode !== existing[0].barcode) {
-      const dupBar = await db.query<any>('SELECT id FROM products WHERE barcode = ? AND id != ?', [barcode, id]);
-      if (dupBar.length > 0) throw new AppError('Barcode already exists', 409, 'DUPLICATE_BARCODE');
+      const dupBar = await db.query<any>('SELECT id FROM products WHERE barcode = ? AND branch_id = ? AND id != ?', [barcode, branchId, id]);
+      if (dupBar.length > 0) throw new AppError('Barcode already exists in this branch', 409, 'DUPLICATE_BARCODE');
     }
 
     await db.execute(
@@ -233,7 +234,7 @@ catalogRouter.put('/products/:id', requireAuth, requirePermission('catalog:write
            is_active = COALESCE(?, is_active),
            description = COALESCE(?, description),
            updated_at = datetime('now')
-       WHERE id = ?`,
+       WHERE id = ? AND branch_id = ?`,
       [
         name,
         categoryId,
@@ -248,6 +249,7 @@ catalogRouter.put('/products/:id', requireAuth, requirePermission('catalog:write
         isActive,
         description,
         id,
+        branchId,
       ]
     );
 

@@ -105,6 +105,14 @@ usersRouter.patch('/:id/status', requireAuth, requirePermission('users:manage'),
       throw new AppError('You cannot deactivate your own account', 400, 'SELF_DEACTIVATION_PROHIBITED');
     }
 
+    const targetUsers = await db.query<any>('SELECT id, branch_id as branchId FROM users WHERE id = ?', [id]);
+    if (targetUsers.length === 0) {
+      throw new AppError('User not found', 404, 'NOT_FOUND');
+    }
+    if (req.user!.roleName !== 'admin' && targetUsers[0].branchId !== req.user!.branchId) {
+      throw new AppError('Unauthorized: You cannot modify user accounts outside your branch', 403, 'FORBIDDEN');
+    }
+
     await db.execute("UPDATE users SET status = ?, updated_at = datetime('now') WHERE id = ?", [status, id]);
 
     await logAudit({

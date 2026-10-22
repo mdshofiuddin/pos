@@ -22,11 +22,12 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
   console.error(`[Error] RequestId: ${requestId} | Method: ${req.method} | URL: ${req.originalUrl}`);
   console.error(err);
 
-  // If already known AppError
-  if (err instanceof AppError) {
-    return res.status(err.statusCode).json({
+  // If already known AppError or object with statusCode
+  if (err instanceof AppError || (err && (typeof err.statusCode === 'number' || typeof err.status === 'number'))) {
+    const statusCode = err.statusCode || err.status || 400;
+    return res.status(statusCode).json({
       error: {
-        code: err.code,
+        code: err.code || (statusCode === 401 ? 'UNAUTHORIZED' : statusCode === 403 ? 'FORBIDDEN' : statusCode === 404 ? 'NOT_FOUND' : 'BAD_REQUEST'),
         message: err.message,
         details: err.details || [],
       },
@@ -52,11 +53,11 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
     });
   }
 
-  // Security: Never leak database driver errors or stack traces to clients in production
   return res.status(500).json({
     error: {
       code: 'INTERNAL_SERVER_ERROR',
-      message: 'An unexpected internal error occurred. Please contact the administrator.',
+      message: err.message || 'An unexpected internal error occurred. Please contact the administrator.',
+      details: err.details || [],
     },
     meta: {
       requestId,

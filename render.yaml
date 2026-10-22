@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: enterprise-pos-system
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SHOP_NAME
+        value: "Fakir Fashion POS"
+      - key: SHOP_ADDRESS
+        value: "House 12, Road 4, Sector 3, Uttara, Dhaka"
+      - key: SHOP_PHONE
+        value: "+880 1700-000000"
+      - key: SHOP_RECEIPT_FOOTER
+        value: "Thank you for shopping with us! No returns without receipt."
+      - key: SHOP_CURRENCY
+        value: "BDT"
+      - key: SHOP_VAT_RATE
+        value: "0.05"

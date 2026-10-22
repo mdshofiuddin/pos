@@ -108,9 +108,9 @@ export const ReportsView: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ fontSize: '20px', fontWeight: 800 }}>Business Reports & Analytics</h2>
+          <h2 style={{ fontSize: '20px', fontWeight: 800 }}>Reports</h2>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-            15 Comprehensive real-time financial, inventory, security, and operational reports
+            Comprehensive real-time financial, sales, inventory, and operational reports with 1-click CSV export
           </p>
         </div>
 

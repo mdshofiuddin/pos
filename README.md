@@ -2,48 +2,62 @@
 
 [![GitHub Repository](https://img.shields.io/badge/GitHub-mdshofiuddin%2Fpos-blue?logo=github)](https://github.com/mdshofiuddin/pos)
 [![Render Deploy](https://img.shields.io/badge/Deploy%20to-Render-46E3B7?logo=render&logoColor=white)](https://render.com)
-[![Vibe96 Audit Ready](https://img.shields.io/badge/Security-Vibe96%20Compliant-success?logo=shield)](https://github.com/mdshofiuddin/pos)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-A high-performance, single-page application (zero page reload) Point of Sale system built with **React + TypeScript + Vite** and a security-hardened **Express.js API**, designed to pass rigorous **Vibe96**, **OWASP Top 10**, and enterprise retail financial audits on the very first pass.
+A high-speed, zero-reload single page application (SPA) Point of Sale and retail management system built with **React, TypeScript, Vite** and a security-hardened **Express.js API**, backed by a database-agnostic architecture.
 
 ---
 
-## 🌟 Key Capabilities
+## 🌟 Key Features & Facilities
 
-### 1. Zero-Reload SPA Architecture
-- **Instant Barcode Scanner Support:** Auto-detects rapid barcode scanner inputs (`Enter` key termination) and adds products directly to cart.
-- **Full POS Keyboard Shortcuts:**
+### 1. Zero-Reload Single Page Application (SPA)
+- **Zero Page Refresh:** Seamless navigation across POS Terminal, Sales History, Inventory, Customers, Purchases, and Reports without page flickering.
+- **Modern Theme:** Ergonomic UI designed for fast-paced retail environments with customizable themes.
+
+### 2. High-Speed POS Terminal & Cashier Billing
+- **Instant Barcode Scanner Support:** Automatically captures hardware barcode scanners with automatic `Enter` key termination to add products to cart instantly.
+- **Keyboard-Driven Shortcuts:**
   - `F2`: Instant product search & focus
-  - `F4`: Trigger checkout & payment modal
-  - `F7`: Hold current basket / ticket
+  - `F4`: Open checkout & payment window
+  - `F7`: Hold current cart/ticket (multi-customer queuing)
   - `F8`: Retrieve held tickets
-  - `F9`: Initialize fresh sale ticket
-  - `Esc`: Dismiss modals / clear focus
-- **Multi-Tender & Split Payments:** Cash, Credit/Debit Card, bKash, Nagad, and Customer Due / Store Credit in a single transaction.
-- **Idempotency & Race Condition Guard:** UUID-based idempotency keys ensure network retries never double-charge customers or duplicate invoices.
+  - `F9`: Clear current cart & start fresh ticket
+  - `Esc`: Close modals and clear selection
+- **Multi-Tender & Split Payments:** Accept mixed payment methods in a single transaction (Cash, Card, bKash, Nagad, and Customer Due/Credit).
+- **Idempotent Atomic Transactions:** Cryptographic request keys guard against accidental double billing or network retry issues.
 
-### 2. Compact Thermal Receipt Printing (58mm / 80mm)
-- Native CSS `@media print` thermal formatting tailored specifically for 58mm and 80mm thermal receipt printers.
-- Formatted without headers, footers, or margins; includes company branding, itemized matrix with quantities and rates, subtotal, VAT/Tax breakdown, payment details, cashier identifier, and barcode/QR display.
+### 3. Compact Thermal Receipt Printing (58mm / 80mm)
+- **Dedicated Print Styles:** Automatically optimizes print layout for standard 58mm and 80mm thermal receipt roll printers via browser print dialog (`Ctrl + P`).
+- **Complete Receipt Matrix:** Displays store branding, invoice reference, date/time, cashier name, itemized quantity and rate, VAT/Tax breakdown, payment tender details, and barcode/QR verification.
 
-### 3. Cashier Shift Management & Cash Drawer Reconciliation
-- Mandatory shift opening float declaration.
-- Real-time tracking of expected cash in drawer vs. physical counted cash at shift closing.
-- Automatic cash variance calculation (Over / Short) with audit logging and manager approval sign-off.
+### 4. Cashier Shift Management & Cash Drawer Reconciliation
+- **Opening Float Tracking:** Enforces recording opening cash drawer floats before processing sales.
+- **Physical vs. System Cash Reconciliation:** Real-time tracking of expected drawer cash vs. physical cash counted at shift end.
+- **Variance Analysis:** Highlights Cash Over / Short differences with manager audit approval.
 
-### 4. At-a-Glance Inventory & Stock Movement Ledger
-- Visual alerts for Low Stock and Out of Stock products.
-- Double-entry stock ledger: Every stock alteration (Sale, Purchase, Return, Damage, Manual Adjustment) is tracked immutably with references, timestamps, and operator IDs.
+### 5. At-a-Glance Inventory & Stock Movement Ledger
+- **Live Stock Alerts:** Real-time visual alerts for low-stock and out-of-stock items.
+- **Immutable Stock Movement Ledger:** Double-entry tracking of every inventory alteration (Sales, Purchases, Returns, Damage, Adjustments) with timestamps and operator IDs.
 
-### 5. 18 Actionable Enterprise Reports (with 1-Click CSV Export)
+### 6. Customer Due & Credit Management
+- **Customer Profiles:** Comprehensive customer registry with phone numbers, loyalty points, and purchase history.
+- **Credit Sales & Due Balances:** Allows trusted customers to buy on credit with due limits.
+- **Payment Collection:** Record customer repayments with updated balance statements.
+
+### 7. Purchasing & Supplier Management
+- **Supplier Directory:** Manage vendor contacts, payment terms, and trade balances.
+- **Purchase Orders & Stock Receiving:** Automatically updates inventory stock counts and weighted unit costs when new stock arrives.
+
+### 8. Reports (Comprehensive Analytics with 1-Click CSV Export)
+Includes 18 detailed operational, financial, and inventory reports:
 1. **Daily Sales Summary:** High-level daily totals, discounts, taxes, and net revenue.
-2. **Daily Sales Details:** Comprehensive itemized sales breakdown with timestamps and cashier attribution.
+2. **Daily Sales Details:** Itemized sales breakdown with timestamps and cashier attribution.
 3. **Daybook (Daily Cash & Sales Journal):** Complete financial record of the trading day.
 4. **Daily Purchase Summary:** Aggregate procurement spending by day.
 5. **Daily Purchase Details:** Detailed supplier invoice breakdown.
 6. **Inventory Valuation & Stock Summary:** Real-time stock asset valuation (Cost vs. Retail value).
 7. **Low Stock & Reorder Alert Report:** Proactive list of products nearing or below minimum thresholds.
-8. **Stock Movement & Ledger Audit:** Comprehensive chronological trail of all warehouse and shop inventory changes.
+8. **Stock Movement & Ledger Audit:** Chronological trail of all warehouse and shop inventory changes.
 9. **Cashier Shift Reconciliation & Drawer Variance:** Shift-by-shift float, drawer cash, and cash variance analysis.
 10. **Product Profit Margin Analysis:** Margin percentages and gross profit per SKU.
 11. **Customer Due / Aging Balances:** Receivables tracking and customer debt aging.
@@ -57,20 +71,14 @@ A high-performance, single-page application (zero page reload) Point of Sale sys
 
 ---
 
-## 🛡️ Vibe96 & Enterprise Security Compliance
+## 🛡️ Enterprise Security & Data Integrity
 
-Built specifically to pass the **Vibe96 Security & Compliance Audit** on the first attempt:
-
-| Vibe96 Audit Requirement | Implementation Details |
-|---|---|
-| **SQL Injection (SQLi) Defense** | 100% Parameterized queries using prepared statements with adapter abstraction. |
-| **Cross-Site Scripting (XSS)** | React JSX auto-escaping + Helmet HTTP Content Security and framing protections. |
-| **Authentication & Session Security** | JWT with cryptographic signing, expiration checks, and role-based claim validation. |
-| **Password Storage Standard** | `bcrypt` hashing with salt rounds of 10. No plain-text passwords ever touch memory or logs. |
-| **Brute-Force & DoS Protection** | `express-rate-limit` windowing on sensitive authentication endpoints (`100 req / 15 min`). |
-| **Payload Size Bounds** | Strict `1mb` body limits on JSON and URL-encoded parsers to prevent memory exhaustion attacks. |
-| **Request Correlation & Auditing** | `X-Request-Id` correlation injected into all response headers and immutable audit logs. |
-| **Role-Based Access Control (RBAC)**| Granular role separation (`admin`, `manager`, `cashier`, `inventory`). Cashiers cannot view cost prices or delete logs. |
+- **SQL Injection Defense:** 100% Parameterized queries using prepared statements with adapter abstraction.
+- **XSS & Content Security:** React JSX auto-escaping combined with Helmet HTTP security headers.
+- **Password Security:** Salted hashes using `bcrypt` (10 rounds). Plain text passwords are never stored.
+- **Authentication:** JWT tokens with role-based access control and configurable session expiry.
+- **Brute-Force Protection:** Rate limiting on sensitive authentication endpoints.
+- **Audit Logging:** Administrative operations, price overrides, and cash counts are immutably logged.
 
 ---
 
@@ -138,9 +146,9 @@ This repository includes a native [render.yaml](file:///c:/Users/Shofiuddin-IT/O
 
 ---
 
-## 🌐 Deploy to Vibe96 / Linux VPS
+## 🌐 Deploy to Linux VPS
 
-For high-security on-premise or cloud hosting on Vibe96 servers:
+For self-hosted production deployment on any Linux VPS:
 
 ```bash
 # 1. Clone repository

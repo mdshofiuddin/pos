@@ -171,7 +171,7 @@ export function App() {
             className={`nav-item ${activeTab === 'reports' ? 'active' : ''}`}
             onClick={() => setActiveTab('reports')}
           >
-            <BarChart3 size={18} /> 15 Reports & Audit
+            <BarChart3 size={18} /> Reports
           </button>
 
           {currentUser.roleName === 'admin' && (

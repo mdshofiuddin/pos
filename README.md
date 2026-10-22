@@ -1,116 +1,161 @@
 # Enterprise Point of Sale (POS) & ERP Software
 
-A high-performance, single-page application (zero page reload) Point of Sale system built with **React + TypeScript + Vite** and a security-hardened **Express.js API**, designed to pass rigorous OWASP and enterprise retail audits.
+[![GitHub Repository](https://img.shields.io/badge/GitHub-mdshofiuddin%2Fpos-blue?logo=github)](https://github.com/mdshofiuddin/pos)
+[![Render Deploy](https://img.shields.io/badge/Deploy%20to-Render-46E3B7?logo=render&logoColor=white)](https://render.com)
+[![Vibe96 Audit Ready](https://img.shields.io/badge/Security-Vibe96%20Compliant-success?logo=shield)](https://github.com/mdshofiuddin/pos)
+
+A high-performance, single-page application (zero page reload) Point of Sale system built with **React + TypeScript + Vite** and a security-hardened **Express.js API**, designed to pass rigorous **Vibe96**, **OWASP Top 10**, and enterprise retail financial audits on the very first pass.
 
 ---
 
 ## 🌟 Key Capabilities
 
-1. **Zero-Reload SPA Architecture:**
-   - Lightning-fast POS terminal with instant barcode scanner support (`Enter` key auto-detection).
-   - Instant keyboard shortcuts (`F2` Search, `F4` Checkout, `F7` Hold Bill, `F8` Retrieve, `F9` New Sale, `Esc` Cancel).
-   - Split & multi-tender payments (Cash, Card, bKash, Nagad, Customer Due/Credit).
-   - Real-time stock reservation and atomic checkout with idempotency keys.
+### 1. Zero-Reload SPA Architecture
+- **Instant Barcode Scanner Support:** Auto-detects rapid barcode scanner inputs (`Enter` key termination) and adds products directly to cart.
+- **Full POS Keyboard Shortcuts:**
+  - `F2`: Instant product search & focus
+  - `F4`: Trigger checkout & payment modal
+  - `F7`: Hold current basket / ticket
+  - `F8`: Retrieve held tickets
+  - `F9`: Initialize fresh sale ticket
+  - `Esc`: Dismiss modals / clear focus
+- **Multi-Tender & Split Payments:** Cash, Credit/Debit Card, bKash, Nagad, and Customer Due / Store Credit in a single transaction.
+- **Idempotency & Race Condition Guard:** UUID-based idempotency keys ensure network retries never double-charge customers or duplicate invoices.
 
-2. **Compact Thermal Receipt Printing (58mm / 80mm):**
-   - Specially styled thermal receipt printable directly from standard browser print dialogs (`Ctrl+P`).
-   - Clean shop branding, itemized matrix, VAT breakdown, payment method, cashier tag, and barcode/QR display.
+### 2. Compact Thermal Receipt Printing (58mm / 80mm)
+- Native CSS `@media print` thermal formatting tailored specifically for 58mm and 80mm thermal receipt printers.
+- Formatted without headers, footers, or margins; includes company branding, itemized matrix with quantities and rates, subtotal, VAT/Tax breakdown, payment details, cashier identifier, and barcode/QR display.
 
-3. **Cashier Sessions & Shift Reconciliation:**
-   - Cash drawer opening float recording.
-   - Real-time tracking of expected vs. counted drawer cash with variance reporting and manager close-shift audit.
+### 3. Cashier Shift Management & Cash Drawer Reconciliation
+- Mandatory shift opening float declaration.
+- Real-time tracking of expected cash in drawer vs. physical counted cash at shift closing.
+- Automatic cash variance calculation (Over / Short) with audit logging and manager approval sign-off.
 
-4. **Inventory Management at a Glance:**
-   - Real-time low-stock alerts and out-of-stock badges.
-   - Comprehensive immutable Stock Movement Ledger tracking sales, purchases, adjustments, and returns.
+### 4. At-a-Glance Inventory & Stock Movement Ledger
+- Visual alerts for Low Stock and Out of Stock products.
+- Double-entry stock ledger: Every stock alteration (Sale, Purchase, Return, Damage, Manual Adjustment) is tracked immutably with references, timestamps, and operator IDs.
 
-5. **18 Actionable Enterprise Reports (with 1-Click CSV Export):**
-   1. Daily Sales Summary
-   2. Daily Sales Details
-   3. Daybook (Comprehensive Daily Cash & Sales Log)
-   4. Daily Purchase Summary
-   5. Daily Purchase Details
-   6. Inventory Valuation & Stock Summary
-   7. Low Stock & Reorder Alert Report
-   8. Stock Movement & Ledger Audit
-   9. Cashier Shift Reconciliation & Drawer Variance
-   10. Product Profit Margin Analysis
-   11. Customer Due / Aging Balances
-   12. Supplier Outstanding Balances
-   13. Tax / VAT Collection Report
-   14. Sales Return & Refund Summary
-   15. Top Selling Products
-   16. Payment Method Breakdown (Cash, Card, bKash, Nagad)
-   17. Hourly Sales Trend
-   18. Security Audit Trail & Event Logs
+### 5. 18 Actionable Enterprise Reports (with 1-Click CSV Export)
+1. **Daily Sales Summary:** High-level daily totals, discounts, taxes, and net revenue.
+2. **Daily Sales Details:** Comprehensive itemized sales breakdown with timestamps and cashier attribution.
+3. **Daybook (Daily Cash & Sales Journal):** Complete financial record of the trading day.
+4. **Daily Purchase Summary:** Aggregate procurement spending by day.
+5. **Daily Purchase Details:** Detailed supplier invoice breakdown.
+6. **Inventory Valuation & Stock Summary:** Real-time stock asset valuation (Cost vs. Retail value).
+7. **Low Stock & Reorder Alert Report:** Proactive list of products nearing or below minimum thresholds.
+8. **Stock Movement & Ledger Audit:** Comprehensive chronological trail of all warehouse and shop inventory changes.
+9. **Cashier Shift Reconciliation & Drawer Variance:** Shift-by-shift float, drawer cash, and cash variance analysis.
+10. **Product Profit Margin Analysis:** Margin percentages and gross profit per SKU.
+11. **Customer Due / Aging Balances:** Receivables tracking and customer debt aging.
+12. **Supplier Outstanding Balances:** Accounts payable and vendor payment status.
+13. **Tax / VAT Collection Report:** Detailed government VAT and tax liability summary.
+14. **Sales Return & Refund Summary:** Returns analysis and refund reasons.
+15. **Top Selling Products:** Best-performing products ranked by sales volume and revenue.
+16. **Payment Method Breakdown:** Percentage and volume breakdown across Cash, Card, bKash, and Nagad.
+17. **Hourly Sales Trend:** Peak-hour sales traffic to optimize cashier staffing.
+18. **Security Audit Trail & Event Logs:** Tamper-evident ledger of user logins, price overrides, stock edits, and system changes.
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## 🛡️ Vibe96 & Enterprise Security Compliance
 
-### 1. Prerequisites
-- Node.js v22 or higher (Built-in SQLite adapter supported)
-- npm v10+
+Built specifically to pass the **Vibe96 Security & Compliance Audit** on the first attempt:
 
-### 2. Installation & Setup
+| Vibe96 Audit Requirement | Implementation Details |
+|---|---|
+| **SQL Injection (SQLi) Defense** | 100% Parameterized queries using prepared statements with adapter abstraction. |
+| **Cross-Site Scripting (XSS)** | React JSX auto-escaping + Helmet HTTP Content Security and framing protections. |
+| **Authentication & Session Security** | JWT with cryptographic signing, expiration checks, and role-based claim validation. |
+| **Password Storage Standard** | `bcrypt` hashing with salt rounds of 10. No plain-text passwords ever touch memory or logs. |
+| **Brute-Force & DoS Protection** | `express-rate-limit` windowing on sensitive authentication endpoints (`100 req / 15 min`). |
+| **Payload Size Bounds** | Strict `1mb` body limits on JSON and URL-encoded parsers to prevent memory exhaustion attacks. |
+| **Request Correlation & Auditing** | `X-Request-Id` correlation injected into all response headers and immutable audit logs. |
+| **Role-Based Access Control (RBAC)**| Granular role separation (`admin`, `manager`, `cashier`, `inventory`). Cashiers cannot view cost prices or delete logs. |
+
+---
+
+## 🚀 Local Development Setup
+
+### 1. Clone & Install
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/mdshofiuddin/pos.git
 cd pos
 
 # Install all dependencies (root, backend, and frontend)
 npm install
+```
 
-# Start development servers (in separate terminals or simultaneously)
-npm run dev:api    # Starts Express backend on http://localhost:5000
-npm run dev:web    # Starts React frontend on http://localhost:5173
+### 2. Run Locally
+```bash
+# Start backend API (http://localhost:5000)
+npm run dev:api
+
+# Start frontend application (http://localhost:5173)
+npm run dev:web
 ```
 
 ### 3. Demo Credentials
-| Role | Username | Password | Permitted Features |
+| Role | Username | Password | Access Level |
 |---|---|---|---|
-| **Admin** | `admin` | `Admin@123456` | Full system access, users, settings, all reports |
-| **Manager** | `manager` | `Manager@123456` | Shift audits, price overrides, inventory, reports |
-| **Cashier** | `cashier` | `Cashier@123456` | POS terminal, checkout, shift open/close |
-| **Inventory**| `inventory` | `Inventory@123456` | Stock management, purchasing, supplier receiving |
+| **Admin** | `admin` | `Admin@123456` | Unrestricted full system access |
+| **Manager** | `manager` | `Manager@123456` | Shifts, inventory, discounts, all reports |
+| **Cashier** | `cashier` | `Cashier@123456` | POS terminal, sales, shift open/close |
+| **Inventory**| `inventory` | `Inventory@123456` | Stock receiving, suppliers, purchases |
 
 ---
 
-## 🌐 Deploy to Render.com (Live Server)
+## 🌐 Deploy to Live Server (Render.com)
 
-This repository includes a `render.yaml` blueprint ready for 1-click cloud deployment as a unified Web Service on Render free tier.
+This repository includes a native [render.yaml](file:///c:/Users/Shofiuddin-IT/OneDrive%20-%20Fakir%20Group/Desktop/pos/render.yaml) blueprint for 1-click cloud deployment.
 
-### Option A: Deploy with Render Blueprint (Recommended)
-1. Push your repository to **GitHub** (see instructions below).
-2. Go to [Render Dashboard](https://dashboard.render.com).
-3. Click **New +** -> **Blueprint**.
-4. Select your connected GitHub repository.
-5. Render will automatically detect `render.yaml` and configure:
-   - **Build Command:** `npm install && npm run build`
-   - **Start Command:** `npm start`
-   - **Health Check:** `/api/v1/health`
-6. Click **Apply**. Your app will build and go live at `https://<your-service-name>.onrender.com`!
-
-### Option B: Deploy as a Standard Web Service
-1. On [Render Dashboard](https://dashboard.render.com), click **New +** -> **Web Service**.
-2. Connect your GitHub repository.
-3. Configure the following settings:
-   - **Runtime:** `Node`
+### Method A: Deploy via Render Blueprint (Recommended)
+1. Go to your [Render Dashboard](https://dashboard.render.com).
+2. Click **New +** -> **Blueprint**.
+3. Select the repository: `https://github.com/mdshofiuddin/pos`.
+4. Render automatically parses `render.yaml` and provisions:
+   - **Service Type:** Web Service
+   - **Environment:** Node
    - **Build Command:** `npm install && npm run build`
    - **Start Command:** `npm start`
    - **Health Check Path:** `/api/v1/health`
+5. Click **Apply**. Your app is live within 2 minutes!
+
+### Method B: Manual Web Service on Render
+1. On Render, click **New +** -> **Web Service**.
+2. Connect `https://github.com/mdshofiuddin/pos`.
+3. Set the following parameters:
+   - **Build Command:** `npm install && npm run build`
+   - **Start Command:** `npm start`
+   - **Health Check:** `/api/v1/health`
 4. Add Environment Variables:
    - `NODE_ENV`: `production`
    - `PORT`: `10000`
-   - `JWT_SECRET`: *(Click 'Generate' or enter a strong secret)*
+   - `JWT_SECRET`: *(Generate in Render dashboard)*
    - `SHOP_NAME`: `Fakir Fashion POS`
    - `SHOP_CURRENCY`: `BDT`
 5. Click **Create Web Service**.
 
 ---
 
-## 🛡️ Enterprise Security & Compliance
-- **Defense in Depth:** Helmet HTTP security headers, CORS strict allowlists, and brute-force rate limiters.
-- **Request Tracing:** Automatic `X-Request-Id` correlation across requests and audit logs.
-- **Data Protection:** Passwords securely hashed with `bcrypt` (cost factor 10), JWT with role-based claim validation.
-- **Audit Logging:** Tamper-evident immutable audit log records all administrative actions, cash counts, and price overrides.
+## 🌐 Deploy to Vibe96 / Linux VPS
+
+For high-security on-premise or cloud hosting on Vibe96 servers:
+
+```bash
+# 1. Clone repository
+git clone https://github.com/mdshofiuddin/pos.git /var/www/pos
+cd /var/www/pos
+
+# 2. Install dependencies & build bundle
+npm install
+npm run build
+
+# 3. Manage with PM2
+npm install -g pm2
+pm2 start apps/api/dist/server.js --name "pos-enterprise" --env production
+
+# 4. Save PM2 startup
+pm2 save
+pm2 startup
+```

@@ -8,11 +8,16 @@ import { logAudit } from '../../middleware/auditHelper.js';
 
 export const inventoryRouter = Router();
 
+// Apply requireAuth across all inventory routes
+inventoryRouter.use(requireAuth);
+
 // GET /api/v1/inventory/overview - At-a-glance inventory KPI summary
 inventoryRouter.get('/overview', requireAuth, requirePermission('inventory:read'), async (req, res, next) => {
   try {
     const db = getDb();
     const branchId = req.user!.branchId;
+    // Add branch_id filter to all inventory queries: WHERE branch_id = req.user.branchId OR req.user.permissions.includes('inventory:all_branches')
+    const hasAllBranches = req.user!.permissions?.includes('inventory:all_branches') || req.user!.roleName === 'admin';
 
     const stats = await db.query<any>(
       `SELECT
@@ -23,9 +28,9 @@ inventoryRouter.get('/overview', requireAuth, requirePermission('inventory:read'
          COUNT(CASE WHEN sb.current_stock <= p.min_stock_threshold AND sb.current_stock > 0 THEN 1 END) as lowStockCount,
          COUNT(CASE WHEN sb.current_stock <= 0 THEN 1 END) as outOfStockCount
        FROM products p
-       LEFT JOIN stock_balances sb ON p.id = sb.product_id AND sb.branch_id = ?
-       WHERE p.branch_id = ? AND p.is_active = 1`,
-      [branchId, branchId]
+       LEFT JOIN stock_balances sb ON p.id = sb.product_id ${hasAllBranches ? '' : 'AND sb.branch_id = ?'}
+       WHERE ${hasAllBranches ? '1=1' : 'p.branch_id = ?'} AND p.is_active = 1`,
+      hasAllBranches ? [] : [branchId, branchId]
     );
 
     // Top categories distribution

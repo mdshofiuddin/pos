@@ -33,7 +33,7 @@ node -v   # Output: v22.x.x
 npm -v    # Output: 10.x.x
 ```
 
-### Step 2.2: Clone Repository & Install Dependencies
+### Step 2.2: Clone Repository & Configure Environment
 ```bash
 # Clone the repository to /var/www/pos
 sudo git clone https://github.com/mdshofiuddin/pos.git /var/www/pos
@@ -42,21 +42,9 @@ cd /var/www/pos
 # Set ownership
 sudo chown -R $USER:$USER /var/www/pos
 
-# Install dependencies (root, backend, and frontend)
-npm install
-```
-
-### Step 2.3: Configure Production Environment Variables
-Before running `npm start`, ensure `JWT_SECRET` is set in your environment or written to `.env`:
-```bash
-# Option A: Export directly to environment before starting
+# Create apps/api/.env with JWT_SECRET=<generated-value> before running npm install
 export JWT_SECRET=$(openssl rand -hex 32)
-
-# Verify: echo $JWT_SECRET | wc -c should output 65 (32 hex chars + newline)
-echo $JWT_SECRET | wc -c
-
-# Option B: Write to .env file
-echo "JWT_SECRET=$(openssl rand -hex 32)" > apps/api/.env
+echo "JWT_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
 cat << EOF >> apps/api/.env
 NODE_ENV=production
 PORT=5000
@@ -71,22 +59,27 @@ DEFAULT_TAX_RATE=5.0
 EOF
 ```
 
-### Step 2.4: Build Production Assets
-Canonical build outputs:
-Running `npm run build` compiles the React frontend into `apps/web/dist` and the Express backend into `apps/api/dist`. The API expects frontend distribution files at `apps/web/dist` for unified SPA serving.
+### Step 2.3: Install Dependencies
+```bash
+# Install dependencies (root, backend, and frontend)
+npm install
+```
+
+### Step 2.4: Database Initialization Order
+The database initialization follows a strict, sequential two-stage order before building production bundles:
+```bash
+# Step 1: Initialize schema: npm run db:migrate (creates tables, foreign keys, and indexes)
+npm run db:migrate
+
+# Step 2: Seed baseline data: npm run seed (seeds admin roles, permissions, baseline products)
+npm run seed
+```
+
+### Step 2.5: Build Production Assets
+Compiles the React frontend into `apps/web/dist` and the Express backend into `apps/api/dist`:
 ```bash
 # Compiles React Vite SPA to apps/web/dist and TypeScript Express API to apps/api/dist
 npm run build
-```
-
-### Step 2.5: Database Initialization Order
-The database initialization follows a strict, sequential two-stage order:
-```bash
-# 3a. Initialize schema: npm run db:migrate (creates tables, foreign keys, and indexes)
-npm run db:migrate
-
-# 3b. Seed baseline data: npm run seed (seeds admin roles, permissions, baseline products)
-npm run seed
 ```
 *(Note: Render free tier has ephemeral storage. SQLite database resets on restart. Use PostgreSQL adapter for production Render deployments).*
 
@@ -146,9 +139,13 @@ sudo usermod -aG docker $USER
 ```
 
 ### Step 3.2: Clone & Launch via Docker Compose
+Create .env file in project root with JWT_SECRET=<value> before running docker-compose up:
 ```bash
 git clone https://github.com/mdshofiuddin/pos.git
 cd pos
+
+# Create .env file in project root with JWT_SECRET=<value> before running docker-compose up
+echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
 
 # Launch container in detached mode
 docker compose up -d --build

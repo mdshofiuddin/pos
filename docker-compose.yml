@@ -12,7 +12,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=5000
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET environment variable is required. Please set JWT_SECRET in .env before running docker compose}
       - SHOP_NAME=Apex Mart Superstore
       - SHOP_ADDRESS=Plot 42, Block C, Gulshan-1, Dhaka-1212
       - SHOP_PHONE=+880 1712-998877

@@ -33,8 +33,8 @@ COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder /app/apps/web/dist ./apps/web/dist
 COPY --from=builder /app/database ./database
 
-# Initialize database schema and baseline seed data in container
-RUN npm run db:migrate && npm run seed
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Expose server port
 EXPOSE 5000
@@ -42,6 +42,8 @@ EXPOSE 5000
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:5000/api/v1/health || exit 1
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 # Start unified production server
 CMD ["node", "apps/api/dist/server.js"]

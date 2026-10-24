@@ -1,16 +1,11 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { z } from 'zod';
-import { requireAuth } from '../../middleware/authMiddleware.js';
+import { requireAuth, extractToken } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { AuthService } from './authService.js';
+import { loginSchema } from '../shared/validationSchemas.js';
 
 export const authRouter = Router();
-
-const loginSchema = z.object({
-  username: z.string().min(1, 'Username is required'),
-  password: z.string().min(1, 'Password is required'),
-});
 
 authRouter.post('/login', async (req, res, next) => {
   try {
@@ -36,9 +31,8 @@ authRouter.post('/login', async (req, res, next) => {
 
 authRouter.post('/logout', requireAuth, async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
-    const result = await AuthService.logoutUser(token, req.user, req.ip);
+    const token = extractToken(req.headers.authorization || '');
+    const result = await AuthService.logoutUser(token || undefined, req.user, req.ip);
 
     res.json({
       data: result,

@@ -9,8 +9,11 @@ import { CatalogRepository } from '../../db/repositories/CatalogRepository.js';
 
 export const catalogRouter = Router();
 
+// Apply requireAuth across all catalog routes
+catalogRouter.use(requireAuth);
+
 // GET /api/v1/products - List / Search products
-catalogRouter.get('/products', requireAuth, async (req, res, next) => {
+catalogRouter.get('/products', async (req, res, next) => {
   try {
     const search = ((req.query.search as string) || '').trim();
     const categoryId = req.query.categoryId as string;
@@ -86,8 +89,8 @@ const updateProductSchema = z.object({
   description: z.string().optional(),
 });
 
-// POST /api/v1/products - Create product (Guarded by requirePermission('catalog.manage'))
-catalogRouter.post('/products', requireAuth, requirePermission('catalog.manage'), async (req, res, next) => {
+// POST /api/v1/products - Create product (Guarded by requirePermission('catalog:write'))
+catalogRouter.post('/products', requirePermission('catalog:write'), async (req, res, next) => {
   try {
     const parsed = productSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -171,8 +174,8 @@ catalogRouter.post('/products', requireAuth, requirePermission('catalog.manage')
   }
 });
 
-// PUT /api/v1/products/:id - Update product (Guarded by requirePermission('catalog.manage'))
-catalogRouter.put('/products/:id', requireAuth, requirePermission('catalog.manage'), async (req, res, next) => {
+// PUT /api/v1/products/:id - Update product (Guarded by requirePermission('catalog:write'))
+catalogRouter.put('/products/:id', requirePermission('catalog:write'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const parsed = updateProductSchema.safeParse(req.body);
@@ -253,8 +256,8 @@ catalogRouter.put('/products/:id', requireAuth, requirePermission('catalog.manag
   }
 });
 
-// DELETE /api/v1/products/:id - Delete product (Guarded by requirePermission('catalog.manage'))
-catalogRouter.delete('/products/:id', requireAuth, requirePermission('catalog.manage'), async (req, res, next) => {
+// DELETE /api/v1/products/:id - Delete product (Guarded by requirePermission('catalog:write'))
+catalogRouter.delete('/products/:id', requirePermission('catalog:write'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const branchId = req.user!.branchId;
@@ -305,8 +308,8 @@ const createCategorySchema = z.object({
   description: z.string().optional().default(''),
 });
 
-// POST /api/v1/categories - Create category (Guarded by requirePermission('catalog.manage'))
-catalogRouter.post('/categories', requireAuth, requirePermission('catalog.manage'), async (req, res, next) => {
+// POST /api/v1/categories - Create category (Guarded by requirePermission('catalog:write'))
+catalogRouter.post('/categories', requirePermission('catalog:write'), async (req, res, next) => {
   try {
     const parsed = createCategorySchema.safeParse(req.body);
     if (!parsed.success) {

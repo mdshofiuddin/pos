@@ -8,6 +8,9 @@ import { logAudit } from '../../middleware/auditHelper.js';
 
 export const returnsRouter = Router();
 
+// Apply requireAuth across all returns routes
+returnsRouter.use(requireAuth);
+
 const returnItemSchema = z.object({
   saleItemId: z.string().min(1, 'Sale item ID is required'),
   quantity: z.number().positive('Quantity must be greater than zero'),
@@ -40,10 +43,11 @@ returnsRouter.post('/', requireAuth, requirePermission('pos:return'), async (req
     let calculatedTotalRefund = 0;
 
     await db.transaction(async (tx) => {
-      // 1. Fetch original sale
+      // 1. Fetch original sale (Add WHERE branch_id = req.user.branchId filter unless user has 'returns:all_branches' permission)
+      const hasAllBranches = req.user!.permissions?.includes('returns:all_branches') || req.user!.roleName === 'admin';
       const saleRows = await tx.query<any>(
-        'SELECT * FROM sales WHERE id = ? AND branch_id = ?',
-        [saleId, branchId]
+        `SELECT * FROM sales WHERE id = ? ${hasAllBranches ? '' : 'AND branch_id = ?'}`,
+        hasAllBranches ? [saleId] : [saleId, branchId]
       );
 
       if (saleRows.length === 0) {
@@ -250,8 +254,9 @@ returnsRouter.get('/', requireAuth, requirePermission('pos:return'), async (req,
   try {
     const db = getDb();
     const branchId = req.user!.branchId;
-    const isManagerOrAdmin = req.user!.roleName === 'admin' || req.user!.roleName === 'manager';
-    const canViewAll = req.user!.permissions?.includes('returns.view_all') || req.user!.permissions?.includes('returns:view_all') || isManagerOrAdmin;
+    // Add WHERE branch_id = req.user.branchId filter to all return queries unless user has 'returns:all_branches' permission
+    const hasAllBranches = req.user!.permissions?.includes('returns:all_branches') || req.user!.roleName === 'admin';
+    const canViewAll = hasAllBranches || req.user!.permissions?.includes('returns.view_all') || req.user!.permissions?.includes('returns:view_all');
 
     const sql = `
       SELECT sr.*, s.invoice_number as invoiceNumber, u.full_name as processedBy,
@@ -260,11 +265,11 @@ returnsRouter.get('/', requireAuth, requirePermission('pos:return'), async (req,
        JOIN sales s ON sr.sale_id = s.id
        JOIN users u ON sr.user_id = u.id
        LEFT JOIN sale_return_items sri ON sr.id = sri.return_id
-       WHERE sr.branch_id = ? ${canViewAll ? '' : 'AND sr.user_id = ?'}
+       WHERE ${hasAllBranches ? '1=1' : 'sr.branch_id = ?'} ${canViewAll ? '' : 'AND sr.user_id = ?'}
        GROUP BY sr.id
        ORDER BY sr.created_at DESC LIMIT 50
     `;
-    const params = canViewAll ? [branchId] : [branchId, req.user!.id];
+    const params = hasAllBranches ? [] : (canViewAll ? [branchId] : [branchId, req.user!.id]);
 
     const returns = await db.query<any>(sql, params);
 

@@ -9,6 +9,8 @@ import { AppError } from '../../middleware/errorHandler.js';
 
 export const settingsRouter = Router();
 
+settingsRouter.use(requireAuth);
+
 // Allowed configurable store settings keys
 const ALLOWED_SETTING_KEYS = [
   'shop_name',
@@ -50,8 +52,8 @@ settingsRouter.get('/', requireAuth, requirePermission('settings.view'), async (
   }
 });
 
-// PUT /api/v1/settings - Update settings (Admin only)
-settingsRouter.put('/', requireAuth, requirePermission('settings.manage'), async (req, res, next) => {
+// PUT /api/v1/settings - Update settings (Admin or settings:write permission required)
+settingsRouter.put('/', requireAuth, requirePermission('settings:write'), async (req, res, next) => {
   try {
     // Only superadmin can modify system configuration
     if (req.user!.roleName !== 'admin') {

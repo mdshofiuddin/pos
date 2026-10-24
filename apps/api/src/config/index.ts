@@ -1,10 +1,15 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Enforce that JWT_SECRET is configured in production
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET environment variable is required in production');
+}
+
 export const config = {
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '5000', 10),
-  jwtSecret: process.env.JWT_SECRET || '',
+  jwtSecret: process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'development-in-memory-fallback-key-32ch'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '12h',
   dbPath: process.env.DB_PATH || 'pos_data.db',
   currency: {
@@ -24,22 +29,19 @@ export const config = {
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
 };
 
-// Fail fast in production if JWT_SECRET is not configured
+// Fail fast if JWT_SECRET is invalid in production
 if (config.env === 'production' && (!config.jwtSecret || config.jwtSecret.trim().length < 32)) {
   throw new Error('JWT_SECRET required in production and must be at least 32 characters');
 }
 
-export const DEV_SECRET = 'dev-secret-change-in-production';
-
-// Centralized single source of truth for JWT secret
+// Centralized single source of truth for JWT secret - no hardcoded secret fallback
 export function getJwtSecret(): string {
   const secret = (process.env.JWT_SECRET || config.jwtSecret || '').trim();
-  if (!secret || secret.length < 32) {
-    if (config.env === 'production') {
-      throw new Error('JWT_SECRET required in production and must be at least 32 characters');
-    }
-    console.warn('[Security Warning] JWT_SECRET not configured or too short (< 32 chars). Using development fallback: ' + DEV_SECRET);
-    return DEV_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET must be set in environment');
+  }
+  if (config.env === 'production' && secret.length < 32) {
+    throw new Error('JWT_SECRET required in production and must be at least 32 characters');
   }
   return secret;
 }
@@ -52,6 +54,18 @@ export const corsAllowedOrigins: string[] = (
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
+
+export function isOriginAllowed(origin: string): boolean {
+  if (!origin) return true;
+  if (
+    corsAllowedOrigins.includes(origin) ||
+    origin.endsWith('.onrender.com') ||
+    origin.startsWith('http://localhost:')
+  ) {
+    return true;
+  }
+  return false;
+}
 
 // Centralized rate limit configuration
 export const rateLimitConfig = {

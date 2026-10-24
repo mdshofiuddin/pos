@@ -9,7 +9,7 @@ export const UsersView: React.FC = () => {
   const [roles, setRoles] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const { form, setForm } = useFormState({
+  const { form, setForm, handleInputChange } = useFormState({
     username: '',
     email: '',
     fullName: '',
@@ -169,9 +169,10 @@ export const UsersView: React.FC = () => {
                   </label>
                   <input
                     type="text"
+                    name="fullName"
                     required
                     value={form.fullName}
-                    onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                    onChange={handleInputChange}
                     placeholder="e.g. Asif Iqbal"
                     style={{
                       width: '100%',
@@ -188,9 +189,10 @@ export const UsersView: React.FC = () => {
                   </label>
                   <input
                     type="text"
+                    name="username"
                     required
                     value={form.username}
-                    onChange={(e) => setForm({ ...form, username: e.target.value })}
+                    onChange={handleInputChange}
                     placeholder="e.g. asif.cashier"
                     style={{
                       width: '100%',
@@ -207,9 +209,10 @@ export const UsersView: React.FC = () => {
                   </label>
                   <input
                     type="email"
+                    name="email"
                     required
                     value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    onChange={handleInputChange}
                     placeholder="e.g. asif@apexmart.com"
                     style={{
                       width: '100%',
@@ -226,10 +229,11 @@ export const UsersView: React.FC = () => {
                   </label>
                   <input
                     type="password"
+                    name="password"
                     required
                     value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    placeholder="Min 6 characters"
+                    onChange={handleInputChange}
+                    placeholder="Min 8 chars (Upper, lower, digit, special)"
                     style={{
                       width: '100%',
                       padding: '8px 12px',
@@ -244,8 +248,9 @@ export const UsersView: React.FC = () => {
                     Role:
                   </label>
                   <select
+                    name="roleId"
                     value={form.roleId}
-                    onChange={(e) => setForm({ ...form, roleId: e.target.value })}
+                    onChange={handleInputChange}
                     style={{
                       width: '100%',
                       padding: '8px 12px',

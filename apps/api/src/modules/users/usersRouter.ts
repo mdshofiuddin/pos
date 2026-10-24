@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { z } from 'zod';
 import crypto from 'crypto';
 import { getDb } from '../../db/index.js';
 import { requireAuth, requirePermission } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { logAudit } from '../../middleware/auditHelper.js';
-import { passwordComplexitySchema, usernameSchema, emailSchema } from '../shared/validationSchemas.js';
+import { passwordComplexitySchema, createUserSchema, updateUserSchema } from '../shared/validationSchemas.js';
 
 export const usersRouter = Router();
 
@@ -39,21 +38,43 @@ usersRouter.get('/', requireAuth, requirePermission('users.manage'), async (req,
   }
 });
 
-const createUserSchema = z.object({
-  username: usernameSchema,
-  email: emailSchema,
-  fullName: z.string().trim().min(2, 'Full name is required').max(100),
-  password: passwordComplexitySchema,
-  roleId: z.string().min(1, 'Role is required'),
-  branchId: z.string().optional(),
-});
+// GET /api/v1/users/:id - Single user details with ownership check
+usersRouter.get('/:id', requireAuth, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    // Ownership check: user can only read their own profile unless they have 'users:read' permission or are admin
+    if (
+      req.user!.id !== id &&
+      !req.user!.permissions.includes('users:read') &&
+      !req.user!.permissions.includes('users.read') &&
+      req.user!.roleName !== 'admin'
+    ) {
+      throw new AppError('Forbidden: You can only read your own user profile', 403, 'FORBIDDEN');
+    }
 
-const updateUserSchema = z.object({
-  fullName: z.string().trim().min(2).max(100).optional(),
-  email: emailSchema.optional(),
-  password: passwordComplexitySchema.optional(),
-  roleId: z.string().optional(),
-  branchId: z.string().optional(),
+    const db = getDb();
+    const users = await db.query<any>(
+      `SELECT u.id, u.branch_id as branchId, u.username, u.email, u.full_name as fullName,
+              u.role_id as roleId, r.name as roleName, u.status, u.last_login_at as lastLoginAt,
+              u.created_at as createdAt, b.name as branchName
+       FROM users u
+       JOIN roles r ON u.role_id = r.id
+       JOIN branches b ON u.branch_id = b.id
+       WHERE u.id = ?`,
+      [id]
+    );
+
+    if (users.length === 0) {
+      throw new AppError('User not found', 404, 'NOT_FOUND');
+    }
+
+    res.json({
+      data: users[0],
+      meta: { requestId: crypto.randomUUID() },
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/v1/users - Create user
@@ -114,12 +135,18 @@ usersRouter.post('/', requireAuth, requirePermission('users.manage'), async (req
   }
 });
 
-// PUT /api/v1/users/:id - Update user (requirePermission('users.manage') and ownership check)
-usersRouter.put('/:id', requireAuth, requirePermission('users.manage'), async (req, res, next) => {
+// PUT /api/v1/users/:id - Update user
+usersRouter.put('/:id', requireAuth, async (req, res, next) => {
   try {
     const userId = req.params.id;
-    // Ownership check: user can only edit self unless admin
-    if (req.user!.id !== userId && req.user!.roleName !== 'admin') {
+    // Ownership check: user can only edit self unless admin or has 'users:write' permission
+    if (
+      req.user!.id !== userId &&
+      !req.user!.permissions.includes('users:write') &&
+      !req.user!.permissions.includes('users.write') &&
+      !req.user!.permissions.includes('users.manage') &&
+      req.user!.roleName !== 'admin'
+    ) {
       throw new AppError('Forbidden: You can only edit your own profile', 403, 'FORBIDDEN');
     }
 
@@ -134,9 +161,9 @@ usersRouter.put('/:id', requireAuth, requirePermission('users.manage'), async (r
       throw new AppError('User not found', 404, 'NOT_FOUND');
     }
 
-    // Role escalation check
-    if (parsed.data.roleId && parsed.data.roleId !== existing[0].role_id && req.user!.roleName !== 'admin') {
-      throw new AppError('Forbidden: Only administrators can modify roles', 403, 'FORBIDDEN');
+    // Role or status escalation check: restrict to admin only
+    if ((parsed.data.roleId || parsed.data.status) && req.user!.roleName !== 'admin') {
+      throw new AppError('Forbidden: Only administrators can modify roles or status', 403, 'FORBIDDEN');
     }
 
     const updates: string[] = [];
@@ -157,6 +184,10 @@ usersRouter.put('/:id', requireAuth, requirePermission('users.manage'), async (r
     if (parsed.data.roleId && req.user!.roleName === 'admin') {
       updates.push('role_id = ?');
       params.push(parsed.data.roleId);
+    }
+    if (parsed.data.status && req.user!.roleName === 'admin') {
+      updates.push('status = ?');
+      params.push(parsed.data.status);
     }
 
     if (updates.length > 0) {

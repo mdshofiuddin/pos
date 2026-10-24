@@ -12,7 +12,7 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "preinstall": "node --input-type=module -e \"import fs from 'fs'; if (!fs.existsSync('apps/api') || !fs.existsSync('apps/web')) { console.warn('Warning: Ensure npm install is run from repository root with apps/api and apps/web structure present'); }\"",
+    "preinstall": "node --input-type=module -e \"import fs from 'fs'; if (!fs.existsSync('apps/api/package.json') || !fs.existsSync('apps/web/package.json')) { console.error('Missing workspace package.json files'); process.exit(1); }\"",
     "build": "npm --prefix apps/web run build && npm --prefix apps/api run build",
     "start": "node apps/api/dist/server.js",
     "dev": "npm run dev:api",

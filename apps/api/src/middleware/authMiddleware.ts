@@ -29,6 +29,13 @@ export function generateToken(payload: object): string {
   return jwt.sign(payload, getJwtSecret(), { algorithm: 'HS256', expiresIn: '12h' });
 }
 
+export function extractToken(authHeader: string): string {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return '';
+  }
+  return authHeader.split(' ')[1] || '';
+}
+
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const authHeader = req.headers.authorization;
@@ -36,7 +43,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       throw new AppError('Authentication required. Missing or malformed token.', 401, 'UNAUTHORIZED');
     }
 
-    const token = authHeader.split(' ')[1];
+    const token = extractToken(authHeader);
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
     const db = getDb();
@@ -103,7 +110,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 }
 
-export function requirePermission(permissionName: string) {
+export function requirePermission(permissionName: string | string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return next(new AppError('Authentication required.', 401, 'UNAUTHORIZED'));
@@ -114,17 +121,23 @@ export function requirePermission(permissionName: string) {
       return next();
     }
 
-    const dotName = permissionName.replace(':', '.');
-    const colonName = permissionName.replace('.', ':');
-    const hasPermission =
-      req.user.permissions.includes(permissionName) ||
-      req.user.permissions.includes(dotName) ||
-      req.user.permissions.includes(colonName);
+    const perms = Array.isArray(permissionName) ? permissionName : [permissionName];
+    const hasPermission = perms.some((perm) => {
+      const dotName = perm.replace(':', '.');
+      const colonName = perm.replace('.', ':');
+      return (
+        req.user!.permissions.includes(perm) ||
+        req.user!.permissions.includes(dotName) ||
+        req.user!.permissions.includes(colonName) ||
+        (perm.includes('catalog') && (req.user!.permissions.includes('catalog.manage') || req.user!.permissions.includes('catalog:write'))) ||
+        (perm.includes('settings') && (req.user!.permissions.includes('settings.manage') || req.user!.permissions.includes('settings:write')))
+      );
+    });
 
     if (!hasPermission) {
       return next(
         new AppError(
-          `Permission denied: Missing required permission [${permissionName}].`,
+          `Permission denied: Missing required permission [${Array.isArray(permissionName) ? permissionName.join(', ') : permissionName}].`,
           403,
           'FORBIDDEN'
         )

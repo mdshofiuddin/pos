@@ -9,6 +9,9 @@ import { CashSessionService } from './cashSessionService.js';
 
 export const sessionRouter = Router();
 
+// Apply requireAuth across all cash-session routes
+sessionRouter.use(requireAuth);
+
 // GET /api/v1/cash-sessions/current - Get active cashier session
 sessionRouter.get('/current', requireAuth, requirePermission('pos:session'), async (req, res, next) => {
   try {
@@ -256,13 +259,14 @@ async function handleCloseSession(req: any, res: any, next: any) {
     }
 
     const session = sessionRows[0];
+    // Ownership check: WHERE user_id = req.user.id OR req.user.permissions.includes('cash_sessions:manage') OR req.user.roleName === 'admin'
     const canManageSessions =
+      session.user_id === req.user!.id ||
+      req.user.permissions?.includes('cash_sessions:manage') ||
       req.user.permissions?.includes('sessions.manage') ||
-      req.user.permissions?.includes('sessions:manage') ||
-      req.user.roleName === 'admin' ||
-      req.user.roleName === 'manager';
+      req.user.roleName === 'admin';
 
-    if (session.user_id !== req.user!.id && !canManageSessions) {
+    if (!canManageSessions) {
       throw new AppError('Forbidden: Cannot close another cashier session', 403, 'FORBIDDEN');
     }
 
@@ -312,11 +316,12 @@ sessionRouter.get('/', requireAuth, requirePermission('pos:session'), async (req
   try {
     const db = getDb();
     const branchId = req.user!.branchId;
+    // Ownership check: WHERE user_id = req.user.id OR req.user.permissions.includes('cash_sessions:manage') OR req.user.roleName === 'admin'
     const canViewAll =
+      req.user!.permissions?.includes('cash_sessions:manage') ||
+      req.user!.permissions?.includes('sessions.manage') ||
       req.user!.permissions?.includes('sessions.view_all') ||
-      req.user!.permissions?.includes('sessions:view_all') ||
-      req.user!.roleName === 'admin' ||
-      req.user!.roleName === 'manager';
+      req.user!.roleName === 'admin';
 
     const sql = `
       SELECT cs.*, u.full_name as cashierName, b.name as branchName

@@ -392,34 +392,68 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE INDEX IF NOT EXISTS idx_branches_company ON branches(company_id);
 CREATE INDEX IF NOT EXISTS idx_users_branch ON users(branch_id);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role_id);
+CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);
+CREATE INDEX IF NOT EXISTS idx_users_branch_id ON users(branch_id);
 CREATE INDEX IF NOT EXISTS idx_products_branch ON products(branch_id);
 CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
 CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_products_unit ON products(unit_id);
+CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
+CREATE INDEX IF NOT EXISTS idx_products_unit_id ON products(unit_id);
+
+-- Inventory table compatibility & foreign key indexes
+CREATE TABLE IF NOT EXISTS inventory (
+  id TEXT PRIMARY KEY,
+  branch_id TEXT NOT NULL,
+  product_id TEXT NOT NULL,
+  current_stock REAL NOT NULL DEFAULT 0.0,
+  last_reconciled_at TEXT,
+  version INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE RESTRICT,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS idx_inventory_product_id ON inventory(product_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_branch_id ON inventory(branch_id);
 CREATE INDEX IF NOT EXISTS idx_stock_balances_product ON stock_balances(product_id);
+CREATE INDEX IF NOT EXISTS idx_stock_balances_product_id ON stock_balances(product_id);
+CREATE INDEX IF NOT EXISTS idx_stock_balances_branch_id ON stock_balances(branch_id);
+
 CREATE INDEX IF NOT EXISTS idx_stock_movements_branch ON stock_movements(branch_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_branch_id ON stock_movements(branch_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_product_id ON stock_movements(product_id);
 CREATE INDEX IF NOT EXISTS idx_stock_movements_prod ON stock_movements(product_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_stock_movements_creator ON stock_movements(created_by);
+
 CREATE INDEX IF NOT EXISTS idx_customers_branch ON customers(branch_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_branch ON purchases(branch_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_supplier ON purchases(supplier_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_creator ON purchases(created_by);
 CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase ON purchase_items(purchase_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase_id ON purchase_items(purchase_id);
 CREATE INDEX IF NOT EXISTS idx_purchase_items_product ON purchase_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_items_product_id ON purchase_items(product_id);
+
 CREATE INDEX IF NOT EXISTS idx_cash_sessions_branch ON cash_sessions(branch_id);
 CREATE INDEX IF NOT EXISTS idx_cash_sessions_user ON cash_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_cash_movements_session ON cash_movements(session_id);
 CREATE INDEX IF NOT EXISTS idx_cash_movements_branch ON cash_movements(branch_id);
 CREATE INDEX IF NOT EXISTS idx_cash_movements_user ON cash_movements(user_id);
+
 CREATE INDEX IF NOT EXISTS idx_sales_branch ON sales(branch_id);
 CREATE INDEX IF NOT EXISTS idx_sales_user ON sales(user_id);
+CREATE INDEX IF NOT EXISTS idx_sales_user_id ON sales(user_id);
 CREATE INDEX IF NOT EXISTS idx_sales_session ON sales(session_id);
 CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
+CREATE INDEX IF NOT EXISTS idx_sales_customer_id ON sales(customer_id);
 CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(created_at);
 CREATE INDEX IF NOT EXISTS idx_sales_invoice ON sales(invoice_number);
 CREATE INDEX IF NOT EXISTS idx_sale_items_sale ON sale_items(sale_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_sale_id ON sale_items(sale_id);
 CREATE INDEX IF NOT EXISTS idx_sale_items_product ON sale_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_product_id ON sale_items(product_id);
+
 CREATE INDEX IF NOT EXISTS idx_payments_sale ON payments(sale_id);
 CREATE INDEX IF NOT EXISTS idx_payments_branch ON payments(branch_id);
 CREATE INDEX IF NOT EXISTS idx_sale_returns_sale ON sale_returns(sale_id);
@@ -430,3 +464,8 @@ CREATE INDEX IF NOT EXISTS idx_sale_return_items_sale_item ON sale_return_items(
 CREATE INDEX IF NOT EXISTS idx_sale_return_items_product ON sale_return_items(product_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_branch ON expenses(branch_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor_id, created_at);
+
+-- 15. Periodic Maintenance Cleanup Tasks (Scoped with LIMIT 1000)
+DELETE FROM token_blacklist WHERE expires_at < datetime('now') LIMIT 1000;
+DELETE FROM audit_logs WHERE created_at < datetime('now', '-90 days') LIMIT 1000;
+

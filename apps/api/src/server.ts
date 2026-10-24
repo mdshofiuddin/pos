@@ -1,9 +1,12 @@
 import { app } from './app.js';
-import { config } from './config/index.js';
+import { config, getJwtSecret } from './config/index.js';
 import { seedDatabase } from './db/seed/seedRunner.js';
 
 async function bootstrap() {
   try {
+    // Validate JWT_SECRET exists at startup
+    getJwtSecret();
+
     // Run migrations and ensure database is seeded
     await seedDatabase();
 

@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { config, corsAllowedOrigins, rateLimitConfig } from './config/index.js';
+import { config, isOriginAllowed, rateLimitConfig } from './config/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { getDb } from './db/index.js';
 
@@ -37,12 +37,7 @@ app.use(
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (
-        corsAllowedOrigins.includes(origin) ||
-        origin.endsWith('.onrender.com') ||
-        origin.startsWith('http://localhost:')
-      ) {
+      if (isOriginAllowed(origin || '')) {
         return callback(null, true);
       }
       return callback(new Error('CORS policy: Access denied for this origin.'));

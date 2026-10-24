@@ -4,10 +4,10 @@ export const passwordComplexitySchema = z
   .string()
   .min(8, 'Password must be at least 8 characters long')
   .max(128, 'Password must not exceed 128 characters')
-  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-  .regex(/[0-9]/, 'Password must contain at least one number')
-  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
+  .regex(
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+\-=[\]{};':"\\|,.<>/?])[A-Za-z\d@$!%*?&#^()_+\-=[\]{};':"\\|,.<>/?]{8,}$/,
+    'Password must be 8+ chars with upper, lower, number, special'
+  );
 
 export const usernameSchema = z
   .string()
@@ -21,3 +21,26 @@ export const emailSchema = z
   .trim()
   .email('Valid email is required')
   .max(100, 'Email must not exceed 100 characters');
+
+export const loginSchema = z.object({
+  username: z.string().min(1, 'Username is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+export const createUserSchema = z.object({
+  username: usernameSchema,
+  email: emailSchema,
+  fullName: z.string().trim().min(2, 'Full name is required').max(100),
+  password: passwordComplexitySchema,
+  roleId: z.string().min(1, 'Role is required'),
+  branchId: z.string().optional(),
+});
+
+export const updateUserSchema = z.object({
+  fullName: z.string().trim().min(2).max(100).optional(),
+  email: emailSchema.optional(),
+  password: passwordComplexitySchema.optional(),
+  roleId: z.string().optional(),
+  branchId: z.string().optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+});

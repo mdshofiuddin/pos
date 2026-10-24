@@ -8,6 +8,9 @@ import { logAudit } from '../../middleware/auditHelper.js';
 
 export const customersRouter = Router();
 
+// Apply requireAuth across all customer routes
+customersRouter.use(requireAuth);
+
 // GET /api/v1/customers - List customers
 customersRouter.get('/', requireAuth, requirePermission('customers:read'), async (req, res, next) => {
   try {
@@ -15,15 +18,18 @@ customersRouter.get('/', requireAuth, requirePermission('customers:read'), async
     const branchId = req.user!.branchId;
     const search = ((req.query.search as string) || '').trim();
 
+    // Add WHERE branch_id = req.user.branchId to all customer queries unless req.user.permissions.includes('customers:all_branches')
+    const hasAllBranches = req.user!.permissions?.includes('customers:all_branches') || req.user!.roleName === 'admin';
+
     let sql = `
       SELECT c.*,
              COUNT(s.id) as totalInvoices,
              COALESCE(SUM(s.grand_total), 0) as totalPurchasedAmount
       FROM customers c
       LEFT JOIN sales s ON c.id = s.customer_id AND s.sale_status = 'completed'
-      WHERE c.branch_id = ?
+      WHERE ${hasAllBranches ? '1=1' : 'c.branch_id = ?'}
     `;
-    const params: any[] = [branchId];
+    const params: any[] = hasAllBranches ? [] : [branchId];
 
     if (search) {
       sql += ` AND (c.name LIKE ? OR c.phone LIKE ?)`;
@@ -63,7 +69,12 @@ customersRouter.post('/', requireAuth, requirePermission('customers:write'), asy
     const db = getDb();
     const branchId = req.user!.branchId;
 
-    const dup = await db.query<any>('SELECT id FROM customers WHERE phone = ?', [phone]);
+    // Add WHERE branch_id = req.user.branchId to all customer queries unless req.user.permissions.includes('customers:all_branches')
+    const hasAllBranches = req.user!.permissions?.includes('customers:all_branches') || req.user!.roleName === 'admin';
+    const dup = await db.query<any>(
+      `SELECT id FROM customers WHERE phone = ? ${hasAllBranches ? '' : 'AND branch_id = ?'}`,
+      hasAllBranches ? [phone] : [phone, branchId]
+    );
     if (dup.length > 0) {
       throw new AppError(`Customer with phone number "${phone}" already exists.`, 409, 'DUPLICATE_PHONE');
     }

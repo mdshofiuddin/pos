@@ -63,6 +63,7 @@ INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES
 
 -- 4. Initial Users (passwords: Admin@123456, Manager@123456, Cashier@123456, Inventory@123456)
 -- Bcrypt hashes generated with standard cost factor 10
+-- WARNING: Change these default passwords immediately in production
 INSERT OR IGNORE INTO users (id, branch_id, username, email, full_name, password_hash, role_id, status) VALUES
 ('usr-admin', 'branch-01', 'admin', 'admin@apexmart.com', 'System Administrator', '$2a$10$wTf7hKq4Zf0m473rQeH9vO30y.mY7Qc6gJmQ.rS8sYyX0q8m6gq9a', 'role-admin', 'active'),
 ('usr-mgr', 'branch-01', 'manager', 'manager@apexmart.com', 'Kazi Jahangir (Store Manager)', '$2a$10$wTf7hKq4Zf0m473rQeH9vO30y.mY7Qc6gJmQ.rS8sYyX0q8m6gq9a', 'role-manager', 'active'),

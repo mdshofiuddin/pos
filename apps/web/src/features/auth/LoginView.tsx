@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { apiRequest } from '../../api/client';
 import { User, CashSession } from '../../types';
 import { ShieldCheck, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
+import { setToken } from '../../utils/tokenManager';
 
 interface Props {
   onLoginSuccess: (user: User, session: CashSession | null) => void;
@@ -35,7 +36,7 @@ export const LoginView: React.FC<Props> = ({ onLoginSuccess }) => {
         }
       );
 
-      localStorage.setItem('pos_token', res.token);
+      setToken(res.token);
       localStorage.setItem('pos_user', JSON.stringify(res.user));
       onLoginSuccess(res.user, res.activeSession);
     } catch (err: any) {

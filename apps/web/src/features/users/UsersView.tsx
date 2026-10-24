@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../api/client';
 import { User } from '../../types';
 import { Shield, Plus, UserCheck, Lock } from 'lucide-react';
+import { useFormState } from '../../hooks/useFormState';
 
 export const UsersView: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const [form, setForm] = useState({
+  const { form, setForm } = useFormState({
     username: '',
     email: '',
     fullName: '',

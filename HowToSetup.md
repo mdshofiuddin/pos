@@ -47,12 +47,19 @@ npm install
 ```
 
 ### Step 2.3: Configure Production Environment Variables
-Create or edit your production `.env` file in `apps/api/.env`:
+Before running `npm start`, ensure `JWT_SECRET` is set in your environment or written to `.env`:
 ```bash
-cat << EOF > apps/api/.env
+# Option A: Export directly to environment before starting
+export JWT_SECRET=$(openssl rand -hex 32)
+
+# Verify: echo $JWT_SECRET | wc -c should output 65 (32 hex chars + newline)
+echo $JWT_SECRET | wc -c
+
+# Option B: Write to .env file
+echo "JWT_SECRET=$(openssl rand -hex 32)" > apps/api/.env
+cat << EOF >> apps/api/.env
 NODE_ENV=production
 PORT=5000
-JWT_SECRET=$(openssl rand -hex 32)
 SHOP_NAME=Apex Mart Superstore
 SHOP_ADDRESS=Plot 42, Block C, Gulshan-1, Dhaka-1212
 SHOP_PHONE=+880 1712-998877
@@ -65,22 +72,23 @@ EOF
 ```
 
 ### Step 2.4: Build Production Assets
+Canonical build outputs:
+Running `npm run build` compiles the React frontend into `apps/web/dist` and the Express backend into `apps/api/dist`. The API expects frontend distribution files at `apps/web/dist` for unified SPA serving.
 ```bash
-# Compiles React Vite SPA and TypeScript Express API
+# Compiles React Vite SPA to apps/web/dist and TypeScript Express API to apps/api/dist
 npm run build
 ```
 
 ### Step 2.5: Database Initialization Order
 The database initialization follows a strict, sequential two-stage order:
-1. **Stage 1 - Schema Migration:** Creates all tables, foreign keys, and performance indexes.
-   ```bash
-   npm run db:migrate
-   ```
-2. **Stage 2 - Baseline Data Seeding:** Populates system roles, permissions, administrative credentials, and baseline catalog.
-   ```bash
-   npm run seed
-   ```
-*(Note: As an automated fail-safe in single-command deployments, `server.ts` will verify database readiness and execute unapplied migrations automatically on boot).*
+```bash
+# 3a. Initialize schema: npm run db:migrate (creates tables, foreign keys, and indexes)
+npm run db:migrate
+
+# 3b. Seed baseline data: npm run seed (seeds admin roles, permissions, baseline products)
+npm run seed
+```
+*(Note: Render free tier has ephemeral storage. SQLite database resets on restart. Use PostgreSQL adapter for production Render deployments).*
 
 ### Step 2.6: Run as a System Daemon using PM2
 ```bash

@@ -80,6 +80,14 @@ export async function seedDatabase() {
     { id: 'p15', name: 'users:manage', category: 'Admin', description: 'Can manage user accounts and roles' },
     { id: 'p16', name: 'settings:manage', category: 'Admin', description: 'Can update store settings' },
     { id: 'p17', name: 'audit:read', category: 'Security', description: 'Can inspect security & system audit trails' },
+    { id: 'p18', name: 'users.manage', category: 'Admin', description: 'Can manage user accounts and roles' },
+    { id: 'p19', name: 'settings.manage', category: 'Admin', description: 'Can update store settings' },
+    { id: 'p20', name: 'settings.view', category: 'Admin', description: 'Can view store settings' },
+    { id: 'p21', name: 'catalog.manage', category: 'Catalog', description: 'Can create and edit products' },
+    { id: 'p22', name: 'reports.view', category: 'Reports', description: 'Can view reports' },
+    { id: 'p23', name: 'sessions.view_all', category: 'POS', description: 'Can view all cashier sessions' },
+    { id: 'p24', name: 'sessions.manage', category: 'POS', description: 'Can manage and close cashier sessions' },
+    { id: 'p25', name: 'returns.view_all', category: 'POS', description: 'Can view all return history' },
   ];
 
   for (const p of permissions) {
@@ -97,7 +105,7 @@ export async function seedDatabase() {
     await db.execute('INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)', ['role-admin', p.id]);
   }
   // Manager permissions
-  const managerPerms = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12', 'p13', 'p14', 'p17'];
+  const managerPerms = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12', 'p13', 'p14', 'p17', 'p20', 'p21', 'p22', 'p23', 'p24', 'p25'];
   for (const pid of managerPerms) {
     await db.execute('INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)', ['role-manager', pid]);
   }

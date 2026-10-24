@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, CashSession } from './types';
 import { apiRequest } from './api/client';
+import { getToken, clearToken } from './utils/tokenManager';
 
 // Views
 import { LoginView } from './features/auth/LoginView';
@@ -41,7 +42,7 @@ export function App() {
   useEffect(() => {
     // Check local session
     const savedUser = localStorage.getItem('pos_user');
-    const token = localStorage.getItem('pos_token');
+    const token = getToken();
 
     if (savedUser && token) {
       try {
@@ -50,7 +51,7 @@ export function App() {
         checkSession();
       } catch {
         localStorage.removeItem('pos_user');
-        localStorage.removeItem('pos_token');
+        clearToken();
       }
     }
     setLoadingInitial(false);
@@ -86,7 +87,7 @@ export function App() {
     } catch {
       // ignore
     }
-    localStorage.removeItem('pos_token');
+    clearToken();
     localStorage.removeItem('pos_user');
     setCurrentUser(null);
     setActiveSession(null);

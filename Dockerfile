@@ -27,9 +27,14 @@ ENV PORT=5000
 
 # Copy root package.json and built applications
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/apps/api ./apps/api
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package*.json ./apps/api/
+COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder /app/apps/web/dist ./apps/web/dist
 COPY --from=builder /app/database ./database
+
+# Initialize database schema and baseline seed data in container
+RUN npm run db:migrate && npm run seed
 
 # Expose server port
 EXPOSE 5000

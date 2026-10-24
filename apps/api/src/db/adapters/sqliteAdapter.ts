@@ -20,6 +20,11 @@ export class SqliteAdapter implements IDatabase {
     return [params];
   }
 
+  private mapDbError(operation: string, err: any): Error {
+    const message = err instanceof Error ? err.message : String(err);
+    return new Error(`[Database ${operation} Error]: ${message}`);
+  }
+
   async query<T>(sql: string, params?: DbParams): Promise<T[]> {
     try {
       const stmt = this.db.prepare(sql);
@@ -27,7 +32,7 @@ export class SqliteAdapter implements IDatabase {
       const rows = stmt.all(...normalized);
       return rows as T[];
     } catch (err: any) {
-      throw new Error(`[Database Query Error]: ${err.message}`);
+      throw this.mapDbError('Query', err);
     }
   }
 
@@ -41,7 +46,7 @@ export class SqliteAdapter implements IDatabase {
         lastInsertRowid: result.lastInsertRowid,
       };
     } catch (err: any) {
-      throw new Error(`[Database Execute Error]: ${err.message}`);
+      throw this.mapDbError('Execute', err);
     }
   }
 

@@ -19,7 +19,7 @@ services:
       - SHOP_CURRENCY=BDT
       - SHOP_VAT_RATE=5.0
     volumes:
-      - pos_data:/app/apps/api
+      - pos_data:/app/apps/api/pos_data.db
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/api/v1/health"]
       interval: 30s

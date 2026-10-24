@@ -32,7 +32,7 @@ const settingsUpdateSchema = z.record(
 );
 
 // GET /api/v1/settings - Get all store settings
-settingsRouter.get('/', requireAuth, requirePermission('settings:manage'), async (req, res, next) => {
+settingsRouter.get('/', requireAuth, requirePermission('settings.view'), async (req, res, next) => {
   try {
     const db = getDb();
     const rows = await db.query<any>('SELECT * FROM settings');
@@ -51,7 +51,7 @@ settingsRouter.get('/', requireAuth, requirePermission('settings:manage'), async
 });
 
 // PUT /api/v1/settings - Update settings (Admin only)
-settingsRouter.put('/', requireAuth, requirePermission('settings:manage'), async (req, res, next) => {
+settingsRouter.put('/', requireAuth, requirePermission('settings.manage'), async (req, res, next) => {
   try {
     // Only superadmin can modify system configuration
     if (req.user!.roleName !== 'admin') {

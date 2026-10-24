@@ -1,3 +1,5 @@
+import { getToken, clearToken } from '../utils/tokenManager';
+
 const API_BASE = '/api/v1';
 
 export interface ApiResponse<T = any> {
@@ -19,7 +21,7 @@ export async function apiRequest<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = localStorage.getItem('pos_token');
+  const token = getToken();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -46,7 +48,7 @@ export async function apiRequest<T = any>(
   if (!response.ok) {
     // If token expired or revoked, clear and notify
     if (response.status === 401 && !endpoint.includes('/auth/login')) {
-      localStorage.removeItem('pos_token');
+      clearToken();
       localStorage.removeItem('pos_user');
       window.dispatchEvent(new CustomEvent('auth:expired'));
     }

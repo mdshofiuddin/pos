@@ -251,6 +251,7 @@ returnsRouter.get('/', requireAuth, requirePermission('pos:return'), async (req,
     const db = getDb();
     const branchId = req.user!.branchId;
     const isManagerOrAdmin = req.user!.roleName === 'admin' || req.user!.roleName === 'manager';
+    const canViewAll = req.user!.permissions?.includes('returns.view_all') || req.user!.permissions?.includes('returns:view_all') || isManagerOrAdmin;
 
     const sql = `
       SELECT sr.*, s.invoice_number as invoiceNumber, u.full_name as processedBy,
@@ -259,11 +260,11 @@ returnsRouter.get('/', requireAuth, requirePermission('pos:return'), async (req,
        JOIN sales s ON sr.sale_id = s.id
        JOIN users u ON sr.user_id = u.id
        LEFT JOIN sale_return_items sri ON sr.id = sri.return_id
-       WHERE sr.branch_id = ? ${isManagerOrAdmin ? '' : 'AND sr.user_id = ?'}
+       WHERE sr.branch_id = ? ${canViewAll ? '' : 'AND sr.user_id = ?'}
        GROUP BY sr.id
        ORDER BY sr.created_at DESC LIMIT 50
     `;
-    const params = isManagerOrAdmin ? [branchId] : [branchId, req.user!.id];
+    const params = canViewAll ? [branchId] : [branchId, req.user!.id];
 
     const returns = await db.query<any>(sql, params);
 

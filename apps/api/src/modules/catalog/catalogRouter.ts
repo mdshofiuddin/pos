@@ -5,54 +5,24 @@ import { getDb } from '../../db/index.js';
 import { requireAuth, requirePermission } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { logAudit } from '../../middleware/auditHelper.js';
+import { CatalogRepository } from '../../db/repositories/CatalogRepository.js';
 
 export const catalogRouter = Router();
 
 // GET /api/v1/products - List / Search products
-catalogRouter.get('/products', requireAuth, requirePermission('catalog:read'), async (req, res, next) => {
+catalogRouter.get('/products', requireAuth, async (req, res, next) => {
   try {
-    const db = getDb();
     const search = ((req.query.search as string) || '').trim();
     const categoryId = req.query.categoryId as string;
-    const stockStatus = req.query.stockStatus as string; // 'low', 'out', 'all'
+    const stockStatus = req.query.stockStatus as string;
     const branchId = req.user!.branchId;
 
-    let sql = `
-      SELECT p.id, p.branch_id as branchId, p.category_id as categoryId, c.name as categoryName,
-             p.unit_id as unitId, u.short_name as unitName, p.sku, p.barcode, p.name,
-             p.description, p.cost_price as costPrice, p.selling_price as sellingPrice,
-             p.min_stock_threshold as minStockThreshold, p.max_stock_threshold as maxStockThreshold,
-             p.tax_rate as taxRate, p.is_active as isActive,
-             COALESCE(sb.current_stock, 0) as currentStock
-      FROM products p
-      JOIN categories c ON p.category_id = c.id
-      JOIN units u ON p.unit_id = u.id
-      LEFT JOIN stock_balances sb ON p.id = sb.product_id AND sb.branch_id = ?
-      WHERE p.branch_id = ?
-    `;
-
-    const params: any[] = [branchId, branchId];
-
-    if (search) {
-      sql += ` AND (p.name LIKE ? OR p.barcode LIKE ? OR p.sku LIKE ?)`;
-      const term = `%${search}%`;
-      params.push(term, term, term);
-    }
-
-    if (categoryId) {
-      sql += ` AND p.category_id = ?`;
-      params.push(categoryId);
-    }
-
-    if (stockStatus === 'low') {
-      sql += ` AND COALESCE(sb.current_stock, 0) <= p.min_stock_threshold AND COALESCE(sb.current_stock, 0) > 0`;
-    } else if (stockStatus === 'out') {
-      sql += ` AND COALESCE(sb.current_stock, 0) <= 0`;
-    }
-
-    sql += ` ORDER BY p.name ASC`;
-
-    const products = await db.query<any>(sql, params);
+    const products = await CatalogRepository.getProducts({
+      branchId,
+      search,
+      categoryId,
+      stockStatus,
+    });
 
     res.json({
       data: products,
@@ -67,28 +37,18 @@ catalogRouter.get('/products', requireAuth, requirePermission('catalog:read'), a
 });
 
 // GET /api/v1/products/:id - Single product
-catalogRouter.get('/products/:id', requireAuth, requirePermission('catalog:read'), async (req, res, next) => {
+catalogRouter.get('/products/:id', requireAuth, async (req, res, next) => {
   try {
-    const db = getDb();
     const branchId = req.user!.branchId;
     const isSuperAdmin = req.user!.roleName === 'admin';
-    const products = await db.query<any>(
-      `SELECT p.*, c.name as categoryName, u.short_name as unitName,
-              COALESCE(sb.current_stock, 0) as currentStock
-       FROM products p
-       JOIN categories c ON p.category_id = c.id
-       JOIN units u ON p.unit_id = u.id
-       LEFT JOIN stock_balances sb ON p.id = sb.product_id AND sb.branch_id = p.branch_id
-       WHERE p.id = ? ${isSuperAdmin ? '' : 'AND p.branch_id = ?'}`,
-      isSuperAdmin ? [req.params.id] : [req.params.id, branchId]
-    );
+    const product = await CatalogRepository.getProductById(req.params.id, branchId, isSuperAdmin);
 
-    if (products.length === 0) {
+    if (!product) {
       throw new AppError('Product not found in this branch or access denied', 404, 'NOT_FOUND');
     }
 
     res.json({
-      data: products[0],
+      data: product,
       meta: { requestId: crypto.randomUUID() },
     });
   } catch (err) {
@@ -126,8 +86,8 @@ const updateProductSchema = z.object({
   description: z.string().optional(),
 });
 
-// POST /api/v1/products - Create product
-catalogRouter.post('/products', requireAuth, requirePermission('catalog:write'), async (req, res, next) => {
+// POST /api/v1/products - Create product (Guarded by requirePermission('catalog.manage'))
+catalogRouter.post('/products', requireAuth, requirePermission('catalog.manage'), async (req, res, next) => {
   try {
     const parsed = productSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -211,8 +171,8 @@ catalogRouter.post('/products', requireAuth, requirePermission('catalog:write'),
   }
 });
 
-// PUT /api/v1/products/:id - Update product
-catalogRouter.put('/products/:id', requireAuth, requirePermission('catalog:write'), async (req, res, next) => {
+// PUT /api/v1/products/:id - Update product (Guarded by requirePermission('catalog.manage'))
+catalogRouter.put('/products/:id', requireAuth, requirePermission('catalog.manage'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const parsed = updateProductSchema.safeParse(req.body);
@@ -293,18 +253,43 @@ catalogRouter.put('/products/:id', requireAuth, requirePermission('catalog:write
   }
 });
 
-// GET /api/v1/categories - List categories
-catalogRouter.get('/categories', requireAuth, requirePermission('catalog:read'), async (req, res, next) => {
+// DELETE /api/v1/products/:id - Delete product (Guarded by requirePermission('catalog.manage'))
+catalogRouter.delete('/products/:id', requireAuth, requirePermission('catalog.manage'), async (req, res, next) => {
   try {
+    const { id } = req.params;
+    const branchId = req.user!.branchId;
     const db = getDb();
-    const categories = await db.query<any>(
-      `SELECT c.*, COUNT(p.id) as productCount
-       FROM categories c
-       LEFT JOIN products p ON c.id = p.category_id
-       GROUP BY c.id
-       ORDER BY c.name ASC`
-    );
 
+    const existing = await db.query<any>('SELECT id, name FROM products WHERE id = ? AND branch_id = ?', [id, branchId]);
+    if (existing.length === 0) {
+      throw new AppError('Product not found in this branch or access denied', 404, 'NOT_FOUND');
+    }
+
+    await CatalogRepository.deleteProduct(id, branchId);
+
+    await logAudit({
+      actorId: req.user!.id,
+      actorName: req.user!.fullName,
+      action: 'CATALOG_DELETE_PRODUCT',
+      entityType: 'product',
+      entityId: id,
+      ipAddress: req.ip,
+      changeSummary: `Deleted product ${existing[0].name} (${id})`,
+    });
+
+    res.json({
+      data: { message: 'Product deleted successfully' },
+      meta: { requestId: crypto.randomUUID() },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/v1/categories - List categories
+catalogRouter.get('/categories', requireAuth, async (req, res, next) => {
+  try {
+    const categories = await CatalogRepository.getCategories();
     res.json({
       data: categories,
       meta: { requestId: crypto.randomUUID() },
@@ -320,8 +305,8 @@ const createCategorySchema = z.object({
   description: z.string().optional().default(''),
 });
 
-// POST /api/v1/categories - Create category
-catalogRouter.post('/categories', requireAuth, requirePermission('catalog:write'), async (req, res, next) => {
+// POST /api/v1/categories - Create category (Guarded by requirePermission('catalog.manage'))
+catalogRouter.post('/categories', requireAuth, requirePermission('catalog.manage'), async (req, res, next) => {
   try {
     const parsed = createCategorySchema.safeParse(req.body);
     if (!parsed.success) {
@@ -371,10 +356,9 @@ catalogRouter.post('/categories', requireAuth, requirePermission('catalog:write'
 });
 
 // GET /api/v1/units - List units
-catalogRouter.get('/units', requireAuth, requirePermission('catalog:read'), async (req, res, next) => {
+catalogRouter.get('/units', requireAuth, async (req, res, next) => {
   try {
-    const db = getDb();
-    const units = await db.query<any>('SELECT * FROM units ORDER BY name ASC');
+    const units = await CatalogRepository.getUnits();
     res.json({
       data: units,
       meta: { requestId: crypto.randomUUID() },

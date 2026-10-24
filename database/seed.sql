@@ -34,7 +34,15 @@ INSERT OR IGNORE INTO permissions (id, name, category, description) VALUES
 ('p14', 'reports:read', 'Reports', 'Can view financial and operational reports'),
 ('p15', 'users:manage', 'Admin', 'Can manage user accounts and roles'),
 ('p16', 'settings:manage', 'Admin', 'Can update store settings'),
-('p17', 'audit:read', 'Security', 'Can inspect security & system audit trails');
+('p17', 'audit:read', 'Security', 'Can inspect security & system audit trails'),
+('p18', 'users.manage', 'Admin', 'Can manage user accounts and roles'),
+('p19', 'settings.manage', 'Admin', 'Can update store settings'),
+('p20', 'settings.view', 'Admin', 'Can view store settings'),
+('p21', 'catalog.manage', 'Catalog', 'Can create and edit products'),
+('p22', 'reports.view', 'Reports', 'Can view reports'),
+('p23', 'sessions.view_all', 'POS', 'Can view all cashier sessions'),
+('p24', 'sessions.manage', 'POS', 'Can manage and close cashier sessions'),
+('p25', 'returns.view_all', 'POS', 'Can view all return history');
 
 -- Role Permissions Mapping
 INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES
@@ -42,10 +50,12 @@ INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES
 ('role-admin', 'p5'), ('role-admin', 'p6'), ('role-admin', 'p7'), ('role-admin', 'p8'),
 ('role-admin', 'p9'), ('role-admin', 'p10'), ('role-admin', 'p11'), ('role-admin', 'p12'),
 ('role-admin', 'p13'), ('role-admin', 'p14'), ('role-admin', 'p15'), ('role-admin', 'p16'), ('role-admin', 'p17'),
+('role-admin', 'p18'), ('role-admin', 'p19'), ('role-admin', 'p20'), ('role-admin', 'p21'), ('role-admin', 'p22'), ('role-admin', 'p23'), ('role-admin', 'p24'), ('role-admin', 'p25'),
 ('role-manager', 'p1'), ('role-manager', 'p2'), ('role-manager', 'p3'), ('role-manager', 'p4'),
 ('role-manager', 'p5'), ('role-manager', 'p6'), ('role-manager', 'p7'), ('role-manager', 'p8'),
 ('role-manager', 'p9'), ('role-manager', 'p10'), ('role-manager', 'p11'), ('role-manager', 'p12'),
 ('role-manager', 'p13'), ('role-manager', 'p14'), ('role-manager', 'p17'),
+('role-manager', 'p20'), ('role-manager', 'p21'), ('role-manager', 'p22'), ('role-manager', 'p23'), ('role-manager', 'p24'), ('role-manager', 'p25'),
 ('role-cashier', 'p1'), ('role-cashier', 'p4'), ('role-cashier', 'p5'), ('role-cashier', 'p6'),
 ('role-cashier', 'p8'), ('role-cashier', 'p12'),
 ('role-inventory', 'p6'), ('role-inventory', 'p7'), ('role-inventory', 'p8'), ('role-inventory', 'p9'),

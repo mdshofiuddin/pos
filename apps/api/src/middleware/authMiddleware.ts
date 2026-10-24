@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { config } from '../config/index.js';
+import { config, getJwtSecret } from '../config/index.js';
 import { getDb } from '../db/index.js';
 import { AppError } from './errorHandler.js';
 
@@ -23,28 +23,6 @@ declare global {
       requestId?: string;
     }
   }
-}
-
-let ephemeralRuntimeSecret: string | null = null;
-
-function getJwtSecret(): string {
-  const secret = (process.env.JWT_SECRET || config.jwtSecret || '').trim();
-  if (secret.length >= 32) {
-    return secret;
-  }
-  if (config.env === 'production') {
-    throw new AppError(
-      'CRITICAL: JWT_SECRET must be configured with at least 32 characters in production.',
-      500,
-      'INSECURE_CONFIGURATION'
-    );
-  }
-  // Local development fallback
-  if (!ephemeralRuntimeSecret) {
-    ephemeralRuntimeSecret = crypto.randomBytes(32).toString('hex');
-    console.warn('[Security Notice] JWT_SECRET not set in environment. Generated 256-bit secure ephemeral key for local development only.');
-  }
-  return ephemeralRuntimeSecret;
 }
 
 export function generateToken(payload: object): string {
@@ -132,11 +110,18 @@ export function requirePermission(permissionName: string) {
     }
 
     // Admin has superuser access
-    if (req.user.roleName === 'admin') {
+    if (req.user.roleName === 'admin' || req.user.roleName === 'superadmin') {
       return next();
     }
 
-    if (!req.user.permissions.includes(permissionName)) {
+    const dotName = permissionName.replace(':', '.');
+    const colonName = permissionName.replace('.', ':');
+    const hasPermission =
+      req.user.permissions.includes(permissionName) ||
+      req.user.permissions.includes(dotName) ||
+      req.user.permissions.includes(colonName);
+
+    if (!hasPermission) {
       return next(
         new AppError(
           `Permission denied: Missing required permission [${permissionName}].`,

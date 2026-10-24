@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { config } from './config/index.js';
+import { config, corsAllowedOrigins, rateLimitConfig } from './config/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { getDb } from './db/index.js';
 
@@ -23,7 +23,6 @@ import { reportsRouter } from './modules/reports/reportsRouter.js';
 import { usersRouter } from './modules/users/usersRouter.js';
 import { settingsRouter } from './modules/settings/settingsRouter.js';
 
-
 export const app = express();
 
 // 1. Security Headers (OWASP)
@@ -34,20 +33,13 @@ app.use(
   })
 );
 
-// 2. CORS Allowlist (Strict domain verification to prevent credential leakage)
+// 2. Centralized CORS Allowlist
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      const trustedOrigins = [
-        config.corsOrigin,
-        'http://localhost:5173',
-        'http://localhost:3000',
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:3000',
-      ];
       if (
-        trustedOrigins.includes(origin) ||
+        corsAllowedOrigins.includes(origin) ||
         origin.endsWith('.onrender.com') ||
         origin.startsWith('http://localhost:')
       ) {
@@ -75,8 +67,8 @@ app.use((req, res, next) => {
 
 // 5. Rate Limiting for sensitive authentication endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // max 100 attempts per window
+  windowMs: rateLimitConfig.windowMs,
+  max: rateLimitConfig.max,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -113,17 +105,18 @@ app.get('/api/v1/health', async (req, res) => {
   });
 });
 
-// 8. Serve Frontend SPA in Production / Staging
+// 8. Serve Frontend SPA in Production / Staging (Canonical path: apps/web/dist)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const canonicalWebDist = path.resolve(process.cwd(), 'apps/web/dist');
 const possibleWebDistPaths = [
-  path.resolve(process.cwd(), 'apps/web/dist'),
+  canonicalWebDist,
   path.resolve(__dirname, '../../web/dist'),
   path.resolve(__dirname, '../../../web/dist'),
   path.resolve(__dirname, '../../../apps/web/dist'),
 ];
-const webDistPath = possibleWebDistPaths.find((p) => fs.existsSync(p));
+const webDistPath = possibleWebDistPaths.find((p) => fs.existsSync(p)) || canonicalWebDist;
 
 if (webDistPath) {
   app.use(express.static(webDistPath));

@@ -6,23 +6,24 @@ import { getDb } from '../../db/index.js';
 import { requireAuth, requirePermission } from '../../middleware/authMiddleware.js';
 import { AppError } from '../../middleware/errorHandler.js';
 import { logAudit } from '../../middleware/auditHelper.js';
+import { passwordComplexitySchema, usernameSchema, emailSchema } from '../shared/validationSchemas.js';
 
 export const usersRouter = Router();
 
 // GET /api/v1/users - List users
-usersRouter.get('/', requireAuth, requirePermission('users:manage'), async (req, res, next) => {
+usersRouter.get('/', requireAuth, requirePermission('users.manage'), async (req, res, next) => {
   try {
     const db = getDb();
     const isSuperAdmin = req.user!.roleName === 'admin';
     const sql = `
       SELECT u.id, u.branch_id as branchId, u.username, u.email, u.full_name as fullName, u.role_id as roleId,
-              r.name as roleName, u.status, u.last_login_at as lastLoginAt,
-              u.created_at as createdAt, b.name as branchName
-       FROM users u
-       JOIN roles r ON u.role_id = r.id
-       JOIN branches b ON u.branch_id = b.id
-       ${isSuperAdmin ? '' : 'WHERE u.branch_id = ?'}
-       ORDER BY u.created_at DESC
+             r.name as roleName, u.status, u.last_login_at as lastLoginAt,
+             u.created_at as createdAt, b.name as branchName
+      FROM users u
+      JOIN roles r ON u.role_id = r.id
+      JOIN branches b ON u.branch_id = b.id
+      ${isSuperAdmin ? '' : 'WHERE u.branch_id = ?'}
+      ORDER BY u.created_at DESC
     `;
     const params = isSuperAdmin ? [] : [req.user!.branchId];
     const users = await db.query<any>(sql, params);
@@ -38,26 +39,25 @@ usersRouter.get('/', requireAuth, requirePermission('users:manage'), async (req,
   }
 });
 
-const passwordComplexitySchema = z
-  .string()
-  .min(8, 'Password must be at least 8 characters long')
-  .max(128, 'Password must not exceed 128 characters')
-  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-  .regex(/[0-9]/, 'Password must contain at least one number')
-  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
-
 const createUserSchema = z.object({
-  username: z.string().trim().min(3, 'Username must be at least 3 characters').max(50),
-  email: z.string().trim().email('Valid email is required'),
+  username: usernameSchema,
+  email: emailSchema,
   fullName: z.string().trim().min(2, 'Full name is required').max(100),
   password: passwordComplexitySchema,
   roleId: z.string().min(1, 'Role is required'),
   branchId: z.string().optional(),
 });
 
+const updateUserSchema = z.object({
+  fullName: z.string().trim().min(2).max(100).optional(),
+  email: emailSchema.optional(),
+  password: passwordComplexitySchema.optional(),
+  roleId: z.string().optional(),
+  branchId: z.string().optional(),
+});
+
 // POST /api/v1/users - Create user
-usersRouter.post('/', requireAuth, requirePermission('users:manage'), async (req, res, next) => {
+usersRouter.post('/', requireAuth, requirePermission('users.manage'), async (req, res, next) => {
   try {
     const parsed = createUserSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -114,8 +114,117 @@ usersRouter.post('/', requireAuth, requirePermission('users:manage'), async (req
   }
 });
 
+// PUT /api/v1/users/:id - Update user (requirePermission('users.manage') and ownership check)
+usersRouter.put('/:id', requireAuth, requirePermission('users.manage'), async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+    // Ownership check: user can only edit self unless admin
+    if (req.user!.id !== userId && req.user!.roleName !== 'admin') {
+      throw new AppError('Forbidden: You can only edit your own profile', 403, 'FORBIDDEN');
+    }
+
+    const parsed = updateUserSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError('Validation failed', 422, 'VALIDATION_ERROR', parsed.error.issues);
+    }
+
+    const db = getDb();
+    const existing = await db.query<any>('SELECT * FROM users WHERE id = ?', [userId]);
+    if (existing.length === 0) {
+      throw new AppError('User not found', 404, 'NOT_FOUND');
+    }
+
+    // Role escalation check
+    if (parsed.data.roleId && parsed.data.roleId !== existing[0].role_id && req.user!.roleName !== 'admin') {
+      throw new AppError('Forbidden: Only administrators can modify roles', 403, 'FORBIDDEN');
+    }
+
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    if (parsed.data.fullName) {
+      updates.push('full_name = ?');
+      params.push(parsed.data.fullName);
+    }
+    if (parsed.data.email) {
+      updates.push('email = ?');
+      params.push(parsed.data.email);
+    }
+    if (parsed.data.password) {
+      updates.push('password_hash = ?');
+      params.push(await bcrypt.hash(parsed.data.password, 12));
+    }
+    if (parsed.data.roleId && req.user!.roleName === 'admin') {
+      updates.push('role_id = ?');
+      params.push(parsed.data.roleId);
+    }
+
+    if (updates.length > 0) {
+      updates.push("updated_at = datetime('now')");
+      params.push(userId);
+      await db.execute(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
+
+    await logAudit({
+      actorId: req.user!.id,
+      actorName: req.user!.fullName,
+      action: 'USER_UPDATED',
+      entityType: 'user',
+      entityId: userId,
+      ipAddress: req.ip,
+      changeSummary: `Updated user ${userId}`,
+    });
+
+    res.json({
+      data: { message: 'User updated successfully' },
+      meta: { requestId: crypto.randomUUID() },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/v1/users/:id - Delete user
+usersRouter.delete('/:id', requireAuth, requirePermission('users.manage'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (id === req.user!.id) {
+      throw new AppError('You cannot delete your own account', 400, 'SELF_DELETION_PROHIBITED');
+    }
+
+    const db = getDb();
+    const existing = await db.query<any>('SELECT * FROM users WHERE id = ?', [id]);
+    if (existing.length === 0) {
+      throw new AppError('User not found', 404, 'NOT_FOUND');
+    }
+
+    if (existing[0].role_id === 'role-admin' && req.user!.roleName !== 'admin') {
+      throw new AppError('Unauthorized: Only administrators can delete admin accounts', 403, 'FORBIDDEN');
+    }
+
+    await db.execute('DELETE FROM users WHERE id = ?', [id]);
+
+    await logAudit({
+      actorId: req.user!.id,
+      actorName: req.user!.fullName,
+      action: 'USER_DELETED',
+      entityType: 'user',
+      entityId: id,
+      ipAddress: req.ip,
+      changeSummary: `Deleted user ${id}`,
+    });
+
+    res.json({
+      data: { message: 'User deleted successfully' },
+      meta: { requestId: crypto.randomUUID() },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /api/v1/users/:id/status - Activate / Deactivate user
-usersRouter.patch('/:id/status', requireAuth, requirePermission('users:manage'), async (req, res, next) => {
+usersRouter.patch('/:id/status', requireAuth, requirePermission('users.manage'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status } = req.body;

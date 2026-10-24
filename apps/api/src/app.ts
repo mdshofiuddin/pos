@@ -34,15 +34,26 @@ app.use(
   })
 );
 
-// 2. CORS Allowlist
+// 2. CORS Allowlist (Strict domain verification to prevent credential leakage)
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow localhost dev servers or configured origins
-      if (!origin || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+      if (!origin) return callback(null, true);
+      const trustedOrigins = [
+        config.corsOrigin,
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+      ];
+      if (
+        trustedOrigins.includes(origin) ||
+        origin.endsWith('.onrender.com') ||
+        origin.startsWith('http://localhost:')
+      ) {
         return callback(null, true);
       }
-      return callback(null, true);
+      return callback(new Error('CORS policy: Access denied for this origin.'));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -89,16 +100,16 @@ app.use('/api/v1/reports', reportsRouter);
 app.use('/api/v1/users', usersRouter);
 app.use('/api/v1/settings', settingsRouter);
 
-// 7. System Health Check Endpoint (Blueprint 3.1)
+// 7. System Health Check Endpoint (Sanitized, no infrastructure information disclosure)
 app.get('/api/v1/health', async (req, res) => {
   const db = getDb();
   const dbHealth = await db.healthCheck();
   res.json({
     status: dbHealth.status === 'ok' ? 'HEALTHY' : 'DEGRADED',
-    uptime: process.uptime(),
     timestamp: new Date().toISOString(),
-    database: dbHealth,
-    environment: config.env,
+    database: {
+      status: dbHealth.status === 'ok' ? 'connected' : 'disconnected',
+    },
   });
 });
 

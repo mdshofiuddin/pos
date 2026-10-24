@@ -413,8 +413,13 @@ reportsRouter.get('/expenses-cashflow', requireAuth, requirePermission('reports:
 // 15. Security & System Audit Trail Report
 reportsRouter.get('/audit-trail', requireAuth, requirePermission('audit:read'), async (req, res, next) => {
   try {
+    if (req.user!.roleName !== 'admin' && req.user!.roleName !== 'manager') {
+      throw new AppError('Forbidden: Only administrators and store managers can inspect security audit trails.', 403, 'FORBIDDEN');
+    }
+
     const db = getDb();
-    const limit = parseInt((req.query.limit as string) || '100', 10);
+    const rawLimit = parseInt((req.query.limit as string) || '100', 10);
+    const limit = Math.max(1, Math.min(isNaN(rawLimit) ? 100 : rawLimit, 200));
     const action = req.query.action as string;
 
     let sql = `

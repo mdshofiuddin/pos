@@ -70,6 +70,8 @@ catalogRouter.get('/products', requireAuth, requirePermission('catalog:read'), a
 catalogRouter.get('/products/:id', requireAuth, requirePermission('catalog:read'), async (req, res, next) => {
   try {
     const db = getDb();
+    const branchId = req.user!.branchId;
+    const isSuperAdmin = req.user!.roleName === 'admin';
     const products = await db.query<any>(
       `SELECT p.*, c.name as categoryName, u.short_name as unitName,
               COALESCE(sb.current_stock, 0) as currentStock
@@ -77,12 +79,12 @@ catalogRouter.get('/products/:id', requireAuth, requirePermission('catalog:read'
        JOIN categories c ON p.category_id = c.id
        JOIN units u ON p.unit_id = u.id
        LEFT JOIN stock_balances sb ON p.id = sb.product_id AND sb.branch_id = p.branch_id
-       WHERE p.id = ?`,
-      [req.params.id]
+       WHERE p.id = ? ${isSuperAdmin ? '' : 'AND p.branch_id = ?'}`,
+      isSuperAdmin ? [req.params.id] : [req.params.id, branchId]
     );
 
     if (products.length === 0) {
-      throw new AppError('Product not found', 404, 'NOT_FOUND');
+      throw new AppError('Product not found in this branch or access denied', 404, 'NOT_FOUND');
     }
 
     res.json({
@@ -95,11 +97,11 @@ catalogRouter.get('/products/:id', requireAuth, requirePermission('catalog:read'
 });
 
 const productSchema = z.object({
-  name: z.string().min(2, 'Name must have at least 2 characters'),
+  name: z.string().trim().min(2, 'Name must have at least 2 characters'),
   categoryId: z.string().min(1, 'Category is required'),
   unitId: z.string().min(1, 'Unit is required'),
-  sku: z.string().min(2, 'SKU is required'),
-  barcode: z.string().min(2, 'Barcode is required'),
+  sku: z.string().trim().min(2, 'SKU is required'),
+  barcode: z.string().trim().min(2, 'Barcode is required'),
   costPrice: z.number().min(0, 'Cost price cannot be negative'),
   sellingPrice: z.number().min(0, 'Selling price cannot be negative'),
   minStockThreshold: z.number().default(5),
@@ -107,6 +109,21 @@ const productSchema = z.object({
   taxRate: z.number().default(5.0),
   initialStock: z.number().optional().default(0),
   description: z.string().optional().default(''),
+});
+
+const updateProductSchema = z.object({
+  name: z.string().trim().min(2, 'Name must have at least 2 characters').optional(),
+  categoryId: z.string().min(1, 'Category is required').optional(),
+  unitId: z.string().min(1, 'Unit is required').optional(),
+  sku: z.string().trim().min(2, 'SKU is required').optional(),
+  barcode: z.string().trim().min(2, 'Barcode is required').optional(),
+  costPrice: z.number().min(0, 'Cost price cannot be negative').optional(),
+  sellingPrice: z.number().min(0, 'Selling price cannot be negative').optional(),
+  minStockThreshold: z.number().min(0).optional(),
+  maxStockThreshold: z.number().min(0).optional(),
+  taxRate: z.number().min(0).max(100).optional(),
+  isActive: z.number().int().min(0).max(1).optional(),
+  description: z.string().optional(),
 });
 
 // POST /api/v1/products - Create product
@@ -198,15 +215,19 @@ catalogRouter.post('/products', requireAuth, requirePermission('catalog:write'),
 catalogRouter.put('/products/:id', requireAuth, requirePermission('catalog:write'), async (req, res, next) => {
   try {
     const { id } = req.params;
-    const db = getDb();
+    const parsed = updateProductSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError('Validation failed', 422, 'VALIDATION_ERROR', parsed.error.issues);
+    }
 
+    const db = getDb();
     const branchId = req.user!.branchId;
     const existing = await db.query<any>('SELECT * FROM products WHERE id = ? AND branch_id = ?', [id, branchId]);
     if (existing.length === 0) {
       throw new AppError('Product not found in this branch or access denied', 404, 'NOT_FOUND');
     }
 
-    const { name, categoryId, unitId, sku, barcode, costPrice, sellingPrice, minStockThreshold, maxStockThreshold, taxRate, isActive, description } = req.body;
+    const { name, categoryId, unitId, sku, barcode, costPrice, sellingPrice, minStockThreshold, maxStockThreshold, taxRate, isActive, description } = parsed.data;
 
     // Check duplicate barcode or SKU if changed
     if (sku && sku !== existing[0].sku) {
@@ -293,15 +314,36 @@ catalogRouter.get('/categories', requireAuth, requirePermission('catalog:read'),
   }
 });
 
+const createCategorySchema = z.object({
+  name: z.string().trim().min(2, 'Category name must have at least 2 characters').max(50),
+  code: z.string().trim().min(2, 'Category code must have at least 2 characters').max(20),
+  description: z.string().optional().default(''),
+});
+
 // POST /api/v1/categories - Create category
 catalogRouter.post('/categories', requireAuth, requirePermission('catalog:write'), async (req, res, next) => {
   try {
-    const { name, code, description } = req.body;
-    if (!name || !code) {
-      throw new AppError('Category name and code are required', 422, 'VALIDATION_ERROR');
+    const parsed = createCategorySchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError('Validation failed', 422, 'VALIDATION_ERROR', parsed.error.issues);
     }
 
+    const { name, code, description } = parsed.data;
     const db = getDb();
+
+    // Check duplicate name or code
+    const dup = await db.query<any>(
+      'SELECT id, name, code FROM categories WHERE LOWER(name) = LOWER(?) OR LOWER(code) = LOWER(?)',
+      [name, code]
+    );
+
+    if (dup.length > 0) {
+      if (dup[0].code.toUpperCase() === code.toUpperCase()) {
+        throw new AppError(`A category with code "${code}" already exists.`, 409, 'DUPLICATE_CATEGORY_CODE');
+      }
+      throw new AppError(`A category with name "${name}" already exists.`, 409, 'DUPLICATE_CATEGORY_NAME');
+    }
+
     const catId = `cat-${Date.now()}`;
     await db.execute(
       `INSERT INTO categories (id, name, code, description, is_active)
@@ -309,8 +351,18 @@ catalogRouter.post('/categories', requireAuth, requirePermission('catalog:write'
       [catId, name, code.toUpperCase(), description || '']
     );
 
+    await logAudit({
+      actorId: req.user!.id,
+      actorName: req.user!.fullName,
+      action: 'CATALOG_CREATE_CATEGORY',
+      entityType: 'category',
+      entityId: catId,
+      ipAddress: req.ip,
+      changeSummary: `Created category ${name} (${code.toUpperCase()})`,
+    });
+
     res.status(201).json({
-      data: { id: catId, message: 'Category created' },
+      data: { id: catId, message: 'Category created successfully' },
       meta: { requestId: crypto.randomUUID() },
     });
   } catch (err) {

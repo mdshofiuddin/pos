@@ -156,10 +156,15 @@ git clone https://github.com/mdshofiuddin/pos.git /var/www/pos
 cd /var/www/pos
 
 # 2. Install dependencies & build bundle
+# Requires Node.js >= 22.0.0 (specified in .nvmrc and package.json)
 npm install
 npm run build
 
-# 3. Manage with PM2
+# 3. Initialize Database (Sequential order)
+npm run db:migrate   # Stage 1: Schema & Indexes
+npm run seed         # Stage 2: RBAC & Baseline Data
+
+# 4. Manage with PM2
 npm install -g pm2
 pm2 start apps/api/dist/server.js --name "pos-enterprise" --env production
 

@@ -13,15 +13,19 @@ export const usersRouter = Router();
 usersRouter.get('/', requireAuth, requirePermission('users:manage'), async (req, res, next) => {
   try {
     const db = getDb();
-    const users = await db.query<any>(
-      `SELECT u.id, u.username, u.email, u.full_name as fullName, u.role_id as roleId,
+    const isSuperAdmin = req.user!.roleName === 'admin';
+    const sql = `
+      SELECT u.id, u.branch_id as branchId, u.username, u.email, u.full_name as fullName, u.role_id as roleId,
               r.name as roleName, u.status, u.last_login_at as lastLoginAt,
               u.created_at as createdAt, b.name as branchName
        FROM users u
        JOIN roles r ON u.role_id = r.id
        JOIN branches b ON u.branch_id = b.id
-       ORDER BY u.created_at DESC`
-    );
+       ${isSuperAdmin ? '' : 'WHERE u.branch_id = ?'}
+       ORDER BY u.created_at DESC
+    `;
+    const params = isSuperAdmin ? [] : [req.user!.branchId];
+    const users = await db.query<any>(sql, params);
 
     const roles = await db.query<any>('SELECT * FROM roles ORDER BY name ASC');
 
@@ -34,12 +38,22 @@ usersRouter.get('/', requireAuth, requirePermission('users:manage'), async (req,
   }
 });
 
+const passwordComplexitySchema = z
+  .string()
+  .min(8, 'Password must be at least 8 characters long')
+  .max(128, 'Password must not exceed 128 characters')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
+
 const createUserSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters'),
-  email: z.string().email('Valid email is required'),
-  fullName: z.string().min(2, 'Full name is required'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  username: z.string().trim().min(3, 'Username must be at least 3 characters').max(50),
+  email: z.string().trim().email('Valid email is required'),
+  fullName: z.string().trim().min(2, 'Full name is required').max(100),
+  password: passwordComplexitySchema,
   roleId: z.string().min(1, 'Role is required'),
+  branchId: z.string().optional(),
 });
 
 // POST /api/v1/users - Create user
@@ -50,9 +64,18 @@ usersRouter.post('/', requireAuth, requirePermission('users:manage'), async (req
       throw new AppError('Validation failed', 422, 'VALIDATION_ERROR', parsed.error.issues);
     }
 
-    const { username, email, fullName, password, roleId } = parsed.data;
+    const { username, email, fullName, password, roleId, branchId: requestedBranchId } = parsed.data;
     const db = getDb();
-    const branchId = req.user!.branchId;
+
+    // Prevent privilege escalation: Only superadmins can assign the admin role
+    if (roleId === 'role-admin' && req.user!.roleName !== 'admin') {
+      throw new AppError('Unauthorized: Only administrators can assign the admin role', 403, 'FORBIDDEN');
+    }
+
+    // Branch scoping: non-admins can only create users inside their assigned branch
+    const branchId = req.user!.roleName === 'admin' && requestedBranchId
+      ? requestedBranchId
+      : req.user!.branchId;
 
     const dup = await db.query<any>(
       'SELECT id FROM users WHERE username = ? OR email = ?',
@@ -105,11 +128,24 @@ usersRouter.patch('/:id/status', requireAuth, requirePermission('users:manage'),
       throw new AppError('You cannot deactivate your own account', 400, 'SELF_DEACTIVATION_PROHIBITED');
     }
 
-    const targetUsers = await db.query<any>('SELECT id, branch_id as branchId FROM users WHERE id = ?', [id]);
+    const targetUsers = await db.query<any>(
+      `SELECT u.id, u.branch_id as branchId, r.name as roleName
+       FROM users u
+       JOIN roles r ON u.role_id = r.id
+       WHERE u.id = ?`,
+      [id]
+    );
     if (targetUsers.length === 0) {
       throw new AppError('User not found', 404, 'NOT_FOUND');
     }
-    if (req.user!.roleName !== 'admin' && targetUsers[0].branchId !== req.user!.branchId) {
+    const targetUser = targetUsers[0];
+
+    // Protect superadmin account from alteration by non-admins
+    if (targetUser.roleName === 'admin' && req.user!.roleName !== 'admin') {
+      throw new AppError('Unauthorized: Only administrators can modify admin accounts', 403, 'FORBIDDEN');
+    }
+
+    if (req.user!.roleName !== 'admin' && targetUser.branchId !== req.user!.branchId) {
       throw new AppError('Unauthorized: You cannot modify user accounts outside your branch', 403, 'FORBIDDEN');
     }
 

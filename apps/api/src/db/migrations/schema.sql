@@ -388,13 +388,45 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Performance Indexes
+-- Performance Indexes & Foreign Key Optimization
+CREATE INDEX IF NOT EXISTS idx_branches_company ON branches(company_id);
+CREATE INDEX IF NOT EXISTS idx_users_branch ON users(branch_id);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role_id);
+CREATE INDEX IF NOT EXISTS idx_products_branch ON products(branch_id);
 CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
 CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
+CREATE INDEX IF NOT EXISTS idx_products_unit ON products(unit_id);
+CREATE INDEX IF NOT EXISTS idx_stock_balances_product ON stock_balances(product_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_branch ON stock_movements(branch_id);
 CREATE INDEX IF NOT EXISTS idx_stock_movements_prod ON stock_movements(product_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_creator ON stock_movements(created_by);
+CREATE INDEX IF NOT EXISTS idx_customers_branch ON customers(branch_id);
+CREATE INDEX IF NOT EXISTS idx_purchases_branch ON purchases(branch_id);
+CREATE INDEX IF NOT EXISTS idx_purchases_supplier ON purchases(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_purchases_creator ON purchases(created_by);
+CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase ON purchase_items(purchase_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_items_product ON purchase_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_cash_sessions_branch ON cash_sessions(branch_id);
+CREATE INDEX IF NOT EXISTS idx_cash_sessions_user ON cash_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_cash_movements_session ON cash_movements(session_id);
+CREATE INDEX IF NOT EXISTS idx_cash_movements_branch ON cash_movements(branch_id);
+CREATE INDEX IF NOT EXISTS idx_cash_movements_user ON cash_movements(user_id);
+CREATE INDEX IF NOT EXISTS idx_sales_branch ON sales(branch_id);
+CREATE INDEX IF NOT EXISTS idx_sales_user ON sales(user_id);
+CREATE INDEX IF NOT EXISTS idx_sales_session ON sales(session_id);
+CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
 CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(created_at);
 CREATE INDEX IF NOT EXISTS idx_sales_invoice ON sales(invoice_number);
-CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_sale ON sale_items(sale_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_product ON sale_items(product_id);
 CREATE INDEX IF NOT EXISTS idx_payments_sale ON payments(sale_id);
+CREATE INDEX IF NOT EXISTS idx_payments_branch ON payments(branch_id);
+CREATE INDEX IF NOT EXISTS idx_sale_returns_sale ON sale_returns(sale_id);
+CREATE INDEX IF NOT EXISTS idx_sale_returns_branch ON sale_returns(branch_id);
+CREATE INDEX IF NOT EXISTS idx_sale_returns_user ON sale_returns(user_id);
+CREATE INDEX IF NOT EXISTS idx_sale_return_items_return ON sale_return_items(return_id);
+CREATE INDEX IF NOT EXISTS idx_sale_return_items_sale_item ON sale_return_items(sale_item_id);
+CREATE INDEX IF NOT EXISTS idx_sale_return_items_product ON sale_return_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_branch ON expenses(branch_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor_id, created_at);

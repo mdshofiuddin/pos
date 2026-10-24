@@ -70,16 +70,17 @@ EOF
 npm run build
 ```
 
-### Step 2.5: Database Migration & Seed Timing
-- **Automatic Execution on Boot:** When the server starts (`node apps/api/dist/server.js` or `npm start`), the bootstrap process automatically checks for database existence, executes the schema migration (`database/schema.sql` / `apps/api/src/db/migrations/schema.sql`), and loads baseline roles, permissions, and sample catalog items (`database/seed.sql`) if not already populated.
-- **Manual Migration / Re-seeding (Optional):**
-```bash
-# Run schema migration directly
-npm run db:migrate
-
-# Seed baseline users, roles, permissions, and demo catalog
-npm run seed
-```
+### Step 2.5: Database Initialization Order
+The database initialization follows a strict, sequential two-stage order:
+1. **Stage 1 - Schema Migration:** Creates all tables, foreign keys, and performance indexes.
+   ```bash
+   npm run db:migrate
+   ```
+2. **Stage 2 - Baseline Data Seeding:** Populates system roles, permissions, administrative credentials, and baseline catalog.
+   ```bash
+   npm run seed
+   ```
+*(Note: As an automated fail-safe in single-command deployments, `server.ts` will verify database readiness and execute unapplied migrations automatically on boot).*
 
 ### Step 2.6: Run as a System Daemon using PM2
 ```bash

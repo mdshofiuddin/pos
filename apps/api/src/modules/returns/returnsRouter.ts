@@ -62,7 +62,14 @@ returnsRouter.post('/', requireAuth, requirePermission('pos:return'), async (req
           "SELECT id, expected_cash FROM cash_sessions WHERE branch_id = ? AND user_id = ? AND status = 'open'",
           [branchId, userId]
         );
-        if (cs.length > 0) activeSessionId = cs[0].id;
+        if (cs.length === 0) {
+          throw new AppError(
+            'Cannot issue cash refund without an active open cash session. Please open a cash session first.',
+            400,
+            'NO_OPEN_SESSION'
+          );
+        }
+        activeSessionId = cs[0].id;
       }
 
       const processedReturnItems: any[] = [];
@@ -193,6 +200,20 @@ returnsRouter.post('/', requireAuth, requirePermission('pos:return'), async (req
            WHERE id = ?`,
           [calculatedTotalRefund, calculatedTotalRefund, activeSessionId]
         );
+
+        // Record cash movement in ledger
+        await tx.execute(
+          `INSERT INTO cash_movements (id, session_id, branch_id, user_id, movement_type, amount, reason)
+           VALUES (?, ?, ?, ?, 'cash_out', ?, ?)`,
+          [
+            `cm-ref-${Date.now()}`,
+            activeSessionId,
+            branchId,
+            userId,
+            calculatedTotalRefund,
+            `Cash refund for return ${returnNumber} (Invoice ${sale.invoice_number})`,
+          ]
+        );
       }
 
       // 6. Audit Log
@@ -229,19 +250,22 @@ returnsRouter.get('/', requireAuth, requirePermission('pos:return'), async (req,
   try {
     const db = getDb();
     const branchId = req.user!.branchId;
+    const isManagerOrAdmin = req.user!.roleName === 'admin' || req.user!.roleName === 'manager';
 
-    const returns = await db.query<any>(
-      `SELECT sr.*, s.invoice_number as invoiceNumber, u.full_name as processedBy,
+    const sql = `
+      SELECT sr.*, s.invoice_number as invoiceNumber, u.full_name as processedBy,
               COUNT(sri.id) as itemsCount
        FROM sale_returns sr
        JOIN sales s ON sr.sale_id = s.id
        JOIN users u ON sr.user_id = u.id
        LEFT JOIN sale_return_items sri ON sr.id = sri.return_id
-       WHERE sr.branch_id = ?
+       WHERE sr.branch_id = ? ${isManagerOrAdmin ? '' : 'AND sr.user_id = ?'}
        GROUP BY sr.id
-       ORDER BY sr.created_at DESC LIMIT 50`,
-      [branchId]
-    );
+       ORDER BY sr.created_at DESC LIMIT 50
+    `;
+    const params = isManagerOrAdmin ? [branchId] : [branchId, req.user!.id];
+
+    const returns = await db.query<any>(sql, params);
 
     res.json({
       data: returns,

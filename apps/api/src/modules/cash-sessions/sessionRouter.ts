@@ -255,16 +255,19 @@ sessionRouter.get('/', requireAuth, requirePermission('pos:session'), async (req
   try {
     const db = getDb();
     const branchId = req.user!.branchId;
+    const isManagerOrAdmin = req.user!.roleName === 'admin' || req.user!.roleName === 'manager';
 
-    const list = await db.query<any>(
-      `SELECT cs.*, u.full_name as cashierName, b.name as branchName
+    const sql = `
+      SELECT cs.*, u.full_name as cashierName, b.name as branchName
        FROM cash_sessions cs
        JOIN users u ON cs.user_id = u.id
        JOIN branches b ON cs.branch_id = b.id
-       WHERE cs.branch_id = ?
-       ORDER BY cs.opening_time DESC LIMIT 50`,
-      [branchId]
-    );
+       WHERE cs.branch_id = ? ${isManagerOrAdmin ? '' : 'AND cs.user_id = ?'}
+       ORDER BY cs.opening_time DESC LIMIT 50
+    `;
+    const params = isManagerOrAdmin ? [branchId] : [branchId, req.user!.id];
+
+    const list = await db.query<any>(sql, params);
 
     res.json({
       data: list,

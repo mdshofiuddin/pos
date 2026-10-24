@@ -7,6 +7,10 @@
   "workspaces": [
     "apps/*"
   ],
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "build": "npm --prefix apps/web run build && npm --prefix apps/api run build",
     "start": "node apps/api/dist/server.js",

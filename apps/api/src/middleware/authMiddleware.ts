@@ -28,15 +28,21 @@ declare global {
 let ephemeralRuntimeSecret: string | null = null;
 
 function getJwtSecret(): string {
-  const secret = process.env.JWT_SECRET || config.jwtSecret;
-  if (secret && secret.trim().length >= 16) {
-    return secret.trim();
+  const secret = (process.env.JWT_SECRET || config.jwtSecret || '').trim();
+  if (secret.length >= 32) {
+    return secret;
   }
-  // Generate a resilient 256-bit ephemeral cryptographic secret for this runtime process instance
-  // This satisfies OWASP requirements (no static hardcoded secrets) and prevents runtime crash
+  if (config.env === 'production') {
+    throw new AppError(
+      'CRITICAL: JWT_SECRET must be configured with at least 32 characters in production.',
+      500,
+      'INSECURE_CONFIGURATION'
+    );
+  }
+  // Local development fallback
   if (!ephemeralRuntimeSecret) {
     ephemeralRuntimeSecret = crypto.randomBytes(32).toString('hex');
-    console.warn('[Security Notice] JWT_SECRET not set in environment. Generated 256-bit secure ephemeral key.');
+    console.warn('[Security Notice] JWT_SECRET not set in environment. Generated 256-bit secure ephemeral key for local development only.');
   }
   return ephemeralRuntimeSecret;
 }
